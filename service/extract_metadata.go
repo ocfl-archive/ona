@@ -95,7 +95,7 @@ func initExtensionFactory(extensionParams map[string]string, indexerAddr string,
 	return extensionFactory, nil
 }
 
-func ExtractMetadata(storageRootPath string) ([]models.File, error) {
+func ExtractMetadata(storageRootPath string) (models.Object, error) {
 	daLogger, lf := lm.CreateLogger("ocfl-reader",
 		"",
 		nil,
@@ -106,17 +106,17 @@ func ExtractMetadata(storageRootPath string) ([]models.File, error) {
 
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create filesystem factory")
+		return models.Object{}, errors.Wrap(err, "cannot create filesystem factory")
 	}
 	if err := fsFactory.Register(zipfs.NewCreateFSFunc(), "\\.zip$", writefs.HighFS); err != nil {
-		return nil, errors.Wrap(err, "cannot register zipfs")
+		return models.Object{}, errors.Wrap(err, "cannot register zipfs")
 	}
 	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(), "", writefs.LowFS); err != nil {
-		return nil, errors.Wrap(err, "cannot register zipfs")
+		return models.Object{}, errors.Wrap(err, "cannot register zipfs")
 	}
 	ocflFS, err := fsFactory.Get(storageRootPath)
 	if err != nil {
-		return nil, err
+		return models.Object{}, err
 	}
 	defer func() {
 		if err := writefs.Close(ocflFS); err != nil {
@@ -133,47 +133,62 @@ func ExtractMetadata(storageRootPath string) ([]models.File, error) {
 		nil,
 		daLogger)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot instantiate extension factory")
+		return models.Object{}, errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
 	ctx := ocfl.NewContextValidation(context.TODO())
 	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, daLogger)
 	if err != nil {
-		return nil, err
+		return models.Object{}, err
 	}
 	metadata, err := storageRoot.ExtractMeta("", "")
 	if err != nil {
 		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
-		return nil, err
+		return models.Object{}, err
 	}
 
-	object := &ocfl.ObjectMetadata{}
+	objectMetadata := &ocfl.ObjectMetadata{}
 	for _, mapItem := range metadata.Objects {
-		object = mapItem
+		objectMetadata = mapItem
 	}
-	filesRetrieved := object.Files
-	head := object.Head
 
-	files := make([]models.File, 0)
-	for index, fileRetr := range filesRetrieved {
-		file := models.File{}
-		file.Checksum = index
-		file.Name = fileRetr.VersionName[head]
-
-		extensions := fileRetr.Extension["NNNN-indexer"]
-		if extensions != nil {
-			switch v := extensions.(type) {
-			case *ironmaiden.ResultV2:
-				file.Size = int(v.Size)
-				file.Pronom = v.Pronom
-				file.Duration = int(v.Duration)
-				file.Width = int(v.Width)
-				file.Height = int(v.Height)
-				file.MimeType = v.Mimetype
-			}
-
-		}
-		files = append(files, file)
+	objectRetrieved, ok := objectMetadata.Extension.(map[string]any)
+	if !ok {
+		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
+		return models.Object{}, err
 	}
-	return files, nil
+
+	objectJson := objectRetrieved["NNNN-metafile"].(map[string]any)
+
+	object := models.Object{}
+	object.Address = objectJson["address"].(string)
+	object.OrganisationAddress = objectJson["organisation_address"].(string)
+	alternativeTitlesRow := objectJson["alternative_titles"].([]any)
+	for _, item := range alternativeTitlesRow {
+		object.AlternativeTitles = append(object.AlternativeTitles, item.(string))
+	}
+	object.Collection = objectJson["collection"].(string)
+	object.CollectionId = objectJson["collection_id"].(string)
+	object.Created = objectJson["created"].(string)
+	identifiersRaw := objectJson["identifiers"].([]any)
+	for _, item := range identifiersRaw {
+		object.Identifiers = append(object.Identifiers, item.(string))
+	}
+	object.IngestWorkflow = objectJson["ingest_workflow"].(string)
+	object.LastChanged = objectJson["last_changed"].(string)
+	object.Organisation = objectJson["organisation"].(string)
+	object.OrganisationId = objectJson["organisation_id"].(string)
+	referencesRaw := objectJson["references"].([]any)
+	for _, item := range referencesRaw {
+		object.References = append(object.References, item.(string))
+	}
+	setsRaw := objectJson["sets"].([]any)
+	for _, item := range setsRaw {
+		object.Sets = append(object.Sets, item.(string))
+	}
+	object.Signature = objectJson["signature"].(string)
+	object.Title = objectJson["title"].(string)
+	object.User = objectJson["user"].(string)
+
+	return object, nil
 }

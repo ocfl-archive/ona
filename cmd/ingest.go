@@ -1,12 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
 	"github.com/joho/godotenv"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"ona/configuration"
+	"ona/models"
 	"ona/service"
 	"os"
 	"path"
@@ -66,54 +68,46 @@ func sendFile(cmd *cobra.Command, args []string) {
 		fmt.Println("could not open file: " + filePathRow)
 		return
 	}
-
 	defer file.Close()
+
+	jsonPathRow, _ := cmd.Flags().GetString("json")
+
+	objectJson := ""
+	if jsonPathRow != "" {
+		jsonPathCleaned := filepath.ToSlash(filepath.Clean(jsonPathRow))
+		jsonObject, err := os.ReadFile(jsonPathCleaned)
+		if err != nil {
+			fmt.Println("could not open json file: " + jsonPathCleaned)
+			return
+		}
+		object := models.Object{}
+		_ = json.Unmarshal(jsonObject, &object)
+		ObjectJsonRaw, _ := json.Marshal(object)
+		objectJson = string(ObjectJsonRaw)
+	} else {
+		object, err := service.ExtractMetadata(filePathCleaned)
+		if err != nil {
+			fmt.Println("could not extract metadata for file: " + filePathCleaned)
+			return
+		}
+		ObjectJsonRaw, _ := json.Marshal(object)
+		objectJson = string(ObjectJsonRaw)
+	}
 
 	// create the tus client.
 	url := configObj.Url
-	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key}}})
+	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key}, "ObjectJson": {objectJson}}})
 	if err != nil {
 		fmt.Println("could not create client for: " + url)
 		return
 	}
 
-	jsonPathRow, _ := cmd.Flags().GetString("json")
-	if jsonPathRow != "" {
-		jsonPathCleaned := filepath.ToSlash(filepath.Clean(jsonPathRow))
-		json, err := os.Open(jsonPathCleaned)
-
-		if err != nil {
-			fmt.Println("could not open json file: " + jsonPathCleaned)
-			return
-		}
-		// create an upload from a file.
-		uploadJson, err := tus.NewUploadFromFile(json)
-		// create the uploader.
-		uploader, err := client.CreateUpload(uploadJson)
-		if err != nil {
-			fmt.Println("could not create upload for file: " + filePathCleaned)
-			return
-		}
-		// start the uploading process.
-		uploader.Upload()
-	} else {
-
-		files, err := service.ExtractMetadata(filePathCleaned)
-		if err != nil {
-			fmt.Println("could not extract metadata for file: " + filePathCleaned)
-			return
-		}
-
-		_ = files
-
-	}
 	// create an upload from a file.
 	upload, err := tus.NewUploadFromFile(file)
 	if err != nil {
 		fmt.Println("could not upload file: " + filePathCleaned)
 		return
 	}
-
 	// create the uploader.
 	uploader, err := client.CreateUpload(upload)
 	if err != nil {
