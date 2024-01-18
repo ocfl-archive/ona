@@ -19,73 +19,59 @@ import (
 )
 
 func initExtensionFactory(extensionParams map[string]string, indexerAddr string, indexerLocalCache bool, indexerActions *ironmaiden.ActionDispatcher, migration *migration.Migration, thumbnail *thumbnail.Thumbnail, sourceFS fs.FS, logger *logging.Logger) (*ocfl.ExtensionFactory, error) {
-	logger.Debugf("initializing ExtensionFactory")
-	extensionFactory, err := ocfl.NewExtensionFactory(extensionParams, logger)
+	extensionFactory, err := ocfl.NewExtensionFactory(extensionParams, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
-	logger.Debugf("adding creator for extension %s", extension.DigestAlgorithmsName)
 	extensionFactory.AddCreator(extension.DigestAlgorithmsName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewDigestAlgorithmsFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.StorageLayoutFlatDirectName)
 	extensionFactory.AddCreator(extension.StorageLayoutFlatDirectName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewStorageLayoutFlatDirectFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.StorageLayoutHashAndIdNTupleName)
 	extensionFactory.AddCreator(extension.StorageLayoutHashAndIdNTupleName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewStorageLayoutHashAndIdNTupleFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.StorageLayoutHashedNTupleName)
 	extensionFactory.AddCreator(extension.StorageLayoutHashedNTupleName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewStorageLayoutHashedNTupleFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.FlatOmitPrefixStorageLayoutName)
 	extensionFactory.AddCreator(extension.FlatOmitPrefixStorageLayoutName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewFlatOmitPrefixStorageLayoutFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.NTupleOmitPrefixStorageLayoutName)
 	extensionFactory.AddCreator(extension.NTupleOmitPrefixStorageLayoutName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewNTupleOmitPrefixStorageLayoutFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.DirectCleanName)
 	extensionFactory.AddCreator(extension.DirectCleanName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewDirectCleanFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.PathDirectName)
 	extensionFactory.AddCreator(extension.PathDirectName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewPathDirectFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.StorageLayoutPairTreeName)
 	extensionFactory.AddCreator(extension.StorageLayoutPairTreeName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewStorageLayoutPairTreeFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", ocfl.ExtensionManagerName)
 	extensionFactory.AddCreator(ocfl.ExtensionManagerName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return ocfl.NewInitialDummyFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.ContentSubPathName)
 	extensionFactory.AddCreator(extension.ContentSubPathName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewContentSubPathFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.MetaFileName)
 	extensionFactory.AddCreator(extension.MetaFileName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewMetaFileFS(fsys)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.IndexerName)
 	extensionFactory.AddCreator(extension.IndexerName, func(fsys fs.FS) (ocfl.Extension, error) {
 		ext, err := extension.NewIndexerFS(fsys, indexerAddr, indexerActions, indexerLocalCache, logger)
 		if err != nil {
@@ -94,17 +80,14 @@ func initExtensionFactory(extensionParams map[string]string, indexerAddr string,
 		return ext, nil
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.MigrationName)
 	extensionFactory.AddCreator(extension.MigrationName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewMigrationFS(fsys, migration, logger)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.ThumbnailName)
 	extensionFactory.AddCreator(extension.ThumbnailName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewThumbnailFS(fsys, thumbnail, logger)
 	})
 
-	logger.Debugf("adding creator for extension %s", extension.FilesystemName)
 	extensionFactory.AddCreator(extension.FilesystemName, func(fsys fs.FS) (ocfl.Extension, error) {
 		return extension.NewFilesystemFS(fsys, logger)
 	})
@@ -113,11 +96,10 @@ func initExtensionFactory(extensionParams map[string]string, indexerAddr string,
 }
 
 func ExtractMetadata(storageRootPath string) ([]models.File, error) {
-
 	daLogger, lf := lm.CreateLogger("ocfl-reader",
 		"",
 		nil,
-		"DEBUG",
+		"ERROR",
 		`%{time:2006-01-02T15:04:05.000} %{shortpkg}::%{longfunc} [%{shortfile}] > %{level:.5s} - %{message}`,
 	)
 	defer lf.Close()
@@ -134,14 +116,11 @@ func ExtractMetadata(storageRootPath string) ([]models.File, error) {
 	}
 	ocflFS, err := fsFactory.Get(storageRootPath)
 	if err != nil {
-		daLogger.Errorf("cannot get filesystem for '%s': %v", storageRootPath, err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, err
 	}
 	defer func() {
 		if err := writefs.Close(ocflFS); err != nil {
 			daLogger.Errorf("cannot close filesystem: %v", err)
-			daLogger.Errorf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		}
 	}()
 
@@ -160,15 +139,11 @@ func ExtractMetadata(storageRootPath string) ([]models.File, error) {
 	ctx := ocfl.NewContextValidation(context.TODO())
 	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, daLogger)
 	if err != nil {
-		daLogger.Errorf("cannot open storage root: %v", err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, err
 	}
 	metadata, err := storageRoot.ExtractMeta("", "")
 	if err != nil {
 		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
-		daLogger.Errorf("cannot extract metadata from storage root: %v\n", err)
-		daLogger.Debugf("%v%+v", err, ocfl.GetErrorStacktrace(err))
 		return nil, err
 	}
 

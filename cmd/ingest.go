@@ -7,6 +7,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"ona/configuration"
+	"ona/service"
 	"os"
 	"path"
 	"path/filepath"
@@ -95,6 +96,16 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 		// start the uploading process.
 		uploader.Upload()
+	} else {
+
+		files, err := service.ExtractMetadata(filePathCleaned)
+		if err != nil {
+			fmt.Println("could not extract metadata for file: " + filePathCleaned)
+			return
+		}
+
+		_ = files
+
 	}
 	// create an upload from a file.
 	upload, err := tus.NewUploadFromFile(file)
@@ -116,20 +127,28 @@ func sendFile(cmd *cobra.Command, args []string) {
 			uploader.Upload()
 		}()
 		fmt.Println("Copy...")
-		amount := 0
-		bar := progressbar.Default(100)
+		bar := progressbar.NewOptions64(
+			upload.Size(),
+			progressbar.OptionSetDescription(""),
+			progressbar.OptionSetWriter(os.Stdout),
+			progressbar.OptionSetWidth(10),
+			progressbar.OptionThrottle(65*time.Millisecond),
+			progressbar.OptionOnCompletion(func() {
+				fmt.Fprint(os.Stdout, "\nUpload finished\n")
+			}),
+			progressbar.OptionSpinnerType(14),
+			progressbar.OptionFullWidth(),
+			progressbar.OptionSetRenderBlankState(true),
+		)
+
+		size := upload.Size()
 		for {
-			offset := upload.Offset()
-			size := upload.Size()
-			percent := int((float32(offset) / float32(size)) * 100)
-			difference := percent - amount
-			amount = percent
-			bar.Add(difference)
-			if offset == size {
-				fmt.Println("Upload is finished")
+			if upload.Finished() {
+				bar.Set(int(size))
 				break
 			}
-			time.Sleep(time.Duration(configObj.BarPause) * time.Millisecond)
+			offset := upload.Offset()
+			bar.Set(int(offset))
 		}
 	} else {
 		uploader.Upload()
