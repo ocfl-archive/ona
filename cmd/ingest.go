@@ -73,6 +73,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 	jsonPathRow, _ := cmd.Flags().GetString("json")
 
 	objectJson := ""
+	object := models.Object{}
 	if jsonPathRow != "" {
 		jsonPathCleaned := filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
@@ -80,23 +81,23 @@ func sendFile(cmd *cobra.Command, args []string) {
 			fmt.Println("could not open json file: " + jsonPathCleaned)
 			return
 		}
-		object := models.Object{}
 		_ = json.Unmarshal(jsonObject, &object)
 		ObjectJsonRaw, _ := json.Marshal(object)
 		objectJson = string(ObjectJsonRaw)
 	} else {
-		object, err := service.ExtractMetadata(filePathCleaned)
+		objectMeta, err := service.ExtractMetadata(filePathCleaned)
 		if err != nil {
 			fmt.Println("could not extract metadata for file: " + filePathCleaned)
 			return
 		}
-		ObjectJsonRaw, _ := json.Marshal(object)
+		ObjectJsonRaw, _ := json.Marshal(objectMeta)
+		_ = json.Unmarshal(ObjectJsonRaw, &object)
 		objectJson = string(ObjectJsonRaw)
 	}
 
 	// create the tus client.
 	url := configObj.Url
-	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key}, "ObjectJson": {objectJson}}})
+	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key}, "ObjectJson": {objectJson}, "Collection": {object.Collection}}})
 	if err != nil {
 		fmt.Println("could not create client for: " + url)
 		return
