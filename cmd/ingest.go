@@ -112,7 +112,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 	// create the uploader.
 	uploader, err := client.CreateUpload(upload)
 	if err != nil {
-		fmt.Println("could not create upload for file: " + filePathCleaned)
+		fmt.Println("could not create upload for file: " + filePathCleaned + ", with err: " + err.Error())
 		return
 	}
 
