@@ -6,6 +6,7 @@ require (
 	emperror.dev/errors v0.8.1
 	github.com/BurntSushi/toml v1.3.2
 	github.com/eventials/go-tus v0.0.0-20220610120217-05d0564bb571
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/je4/filesystem/v2 v2.0.2
 	github.com/je4/gocfl/v2 v2.0.1
 	github.com/je4/indexer/v2 v2.0.5

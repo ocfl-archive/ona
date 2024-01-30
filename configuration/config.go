@@ -5,4 +5,6 @@ type Config struct {
 	Key       string
 	ChunkSize int64
 	BarPause  int
+	StatusUrl string
+	JwtKey    string
 }

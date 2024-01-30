@@ -4,18 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
-	"github.com/joho/godotenv"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
-	"ona/configuration"
 	"ona/models"
 	"ona/service"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -39,21 +33,7 @@ func init() {
 }
 
 func sendFile(cmd *cobra.Command, args []string) {
-	// Relative on runtime DIR:
-	_, b, _, _ := runtime.Caller(0)
-	d1 := strings.Replace(filepath.ToSlash(path.Join(path.Dir(b))), "/cmd", "", -1)
-	err := godotenv.Load(d1 + "/.env")
-	if err != nil {
-		fmt.Println(err)
-	}
-	configObj := &configuration.Config{
-		Url: os.Getenv("URL"),
-		Key: os.Getenv("KEY"),
-	}
-	chunkSize, _ := strconv.Atoi(os.Getenv("CHUNK_SIZE"))
-	configObj.ChunkSize = int64(chunkSize)
-	configObj.BarPause, _ = strconv.Atoi(os.Getenv("BAR_PAUSE"))
-
+	configObj := service.GetConfig()
 	quiet, _ := cmd.Flags().GetBool("quiet")
 
 	filePathRow, _ := cmd.Flags().GetString("path")
