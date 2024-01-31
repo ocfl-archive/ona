@@ -34,7 +34,11 @@ func init() {
 
 func sendFile(cmd *cobra.Command, args []string) {
 	configObj := service.GetConfig()
-	quiet, _ := cmd.Flags().GetBool("quiet")
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	filePathRow, _ := cmd.Flags().GetString("path")
 	if filePathRow == "" {
@@ -50,7 +54,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	defer file.Close()
 
-	jsonPathRow, _ := cmd.Flags().GetString("json")
+	jsonPathRow, err := cmd.Flags().GetString("json")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	objectJson := ""
 	object := models.Object{}
@@ -61,8 +69,16 @@ func sendFile(cmd *cobra.Command, args []string) {
 			fmt.Println("could not open json file: " + jsonPathCleaned)
 			return
 		}
-		_ = json.Unmarshal(jsonObject, &object)
-		ObjectJsonRaw, _ := json.Marshal(object)
+		err = json.Unmarshal(jsonObject, &object)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		ObjectJsonRaw, err := json.Marshal(object)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		objectJson = string(ObjectJsonRaw)
 	} else {
 		objectMeta, err := service.ExtractMetadata(filePathCleaned)
@@ -75,9 +91,16 @@ func sendFile(cmd *cobra.Command, args []string) {
 		objectJson = string(ObjectJsonRaw)
 	}
 
+	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: "initial copying"})
+	if err != nil {
+		fmt.Println("could not create initial status")
+		return
+	}
+
 	// create the tus client.
 	url := configObj.Url
-	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key}, "ObjectJson": {objectJson}, "Collection": {object.Collection}}})
+	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
+		"ObjectJson": {objectJson}, "Collection": {object.Collection}, "StatusId": {archivedStatus.Id}}})
 	if err != nil {
 		fmt.Println("could not create client for: " + url)
 		return
