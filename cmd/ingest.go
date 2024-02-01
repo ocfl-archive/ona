@@ -143,7 +143,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			progressbar.OptionSetWidth(10),
 			progressbar.OptionThrottle(65*time.Millisecond),
 			progressbar.OptionOnCompletion(func() {
-				fmt.Fprint(os.Stdout, "\nUpload finished\n")
+				fmt.Fprint(os.Stdout, "\nUpload to temporary location is finished. Upload Id: "+archivedStatus.Id+" \n")
 			}),
 			progressbar.OptionSpinnerType(14),
 			progressbar.OptionFullWidth(),
