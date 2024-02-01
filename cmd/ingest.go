@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	initialCopying = "initial copying"
+	archived       = "archived"
+)
+
 var generateCmd = &cobra.Command{
 	Use:   "ingest",
 	Short: "Send files to storage",
@@ -30,9 +35,15 @@ func init() {
 	generateCmd.Flags().StringP("json", "j", "", "Path to json file")
 	generateCmd.Flags().StringP("path", "p", "", "Path to file")
 	generateCmd.Flags().BoolP("quiet", "q", false, "Should the process information be showed")
+	generateCmd.Flags().BoolP("wait", "w", false, "Wait until the order is finished")
 }
 
 func sendFile(cmd *cobra.Command, args []string) {
+	wait, err := cmd.Flags().GetBool("wait")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	configObj := service.GetConfig()
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
@@ -91,7 +102,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		objectJson = string(ObjectJsonRaw)
 	}
 
-	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: "initial copying"})
+	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying})
 	if err != nil {
 		fmt.Println("could not create initial status")
 		return
@@ -100,7 +111,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 	// create the tus client.
 	url := configObj.Url
 	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-		"ObjectJson": {objectJson}, "Collection": {object.Collection}, "StatusId": {archivedStatus.Id}}})
+		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}}})
 	if err != nil {
 		fmt.Println("could not create client for: " + url)
 		return
@@ -150,5 +161,20 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 	} else {
 		uploader.Upload()
+	}
+	if wait {
+		for {
+			archivedStatusW, err := service.GetStatus(archivedStatus.Id)
+			if err != nil {
+				fmt.Println("could not get initial status with Id: " + archivedStatus.Id)
+				return
+			}
+			if archivedStatusW.Status != archived {
+				time.Sleep(10 * time.Second)
+			} else {
+				break
+			}
+		}
+
 	}
 }
