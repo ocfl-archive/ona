@@ -168,6 +168,9 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 		object.AlternativeTitles = append(object.AlternativeTitles, item.(string))
 	}
 	object.Collection = objectJson["collection"].(string)
+	if objectJson["description"] != nil {
+		object.Description = objectJson["description"].(string)
+	}
 	object.CollectionId = objectJson["collection_id"].(string)
 	object.Created = objectJson["created"].(string)
 	identifiersRaw := objectJson["identifiers"].([]any)
