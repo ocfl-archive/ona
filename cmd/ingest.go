@@ -10,12 +10,15 @@ import (
 	"ona/service"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 const (
 	initialCopying = "initial copying"
 	archived       = "archived"
+	sha512         = ".sha512"
+	separator      = " *"
 )
 
 var generateCmd = &cobra.Command{
@@ -100,6 +103,10 @@ func sendFile(cmd *cobra.Command, args []string) {
 		ObjectJsonRaw, _ := json.Marshal(objectMeta)
 		_ = json.Unmarshal(ObjectJsonRaw, &object)
 		objectJson = string(ObjectJsonRaw)
+	}
+	fileChecksum, err := os.ReadFile(filePathCleaned + sha512)
+	if err == nil {
+		object.Checksum = strings.Split(string(fileChecksum), separator)[0]
 	}
 
 	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying})
