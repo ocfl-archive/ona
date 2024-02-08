@@ -73,7 +73,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-
+	checksum := ""
+	fileChecksum, err := os.ReadFile(filePathCleaned + sha512)
+	if err == nil {
+		checksum = strings.Split(string(fileChecksum), separator)[0]
+	}
 	objectJson := ""
 	object := models.Object{}
 	if jsonPathRow != "" {
@@ -88,6 +92,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			fmt.Println(err)
 			return
 		}
+		object.Checksum = checksum
 		ObjectJsonRaw, err := json.Marshal(object)
 		if err != nil {
 			fmt.Println(err)
@@ -96,17 +101,23 @@ func sendFile(cmd *cobra.Command, args []string) {
 		objectJson = string(ObjectJsonRaw)
 	} else {
 		objectMeta, err := service.ExtractMetadata(filePathCleaned)
+		objectMeta.Checksum = checksum
 		if err != nil {
 			fmt.Println("could not extract metadata for file: " + filePathCleaned)
 			return
 		}
-		ObjectJsonRaw, _ := json.Marshal(objectMeta)
-		_ = json.Unmarshal(ObjectJsonRaw, &object)
+		ObjectJsonRaw, err := json.Marshal(objectMeta)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		err = json.Unmarshal(ObjectJsonRaw, &object)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		objectJson = string(ObjectJsonRaw)
-	}
-	fileChecksum, err := os.ReadFile(filePathCleaned + sha512)
-	if err == nil {
-		object.Checksum = strings.Split(string(fileChecksum), separator)[0]
 	}
 
 	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying})
