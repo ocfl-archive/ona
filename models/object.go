@@ -14,7 +14,7 @@ type Object struct {
 	Address             string   `json:"address"`
 	Created             string   `json:"created"`
 	LastChanged         string   `json:"last_changed"`
-	Size                int      `json:"size"`
+	Size                int64    `json:"size"`
 	Id                  string   `json:"id"`
 	CollectionId        string   `json:"collection_id"`
 	Checksum            string   `json:"checksum"`

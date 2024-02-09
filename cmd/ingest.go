@@ -68,6 +68,13 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	defer file.Close()
 
+	fileInfo, err := os.Stat(filePathCleaned)
+	if err != nil {
+		fmt.Println(err, "cannot read file: %v", err)
+		return
+	}
+	objectSize := fileInfo.Size()
+
 	jsonPathRow, err := cmd.Flags().GetString("json")
 	if err != nil {
 		fmt.Println(err)
@@ -93,6 +100,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			return
 		}
 		object.Checksum = checksum
+		object.Size = objectSize
 		ObjectJsonRaw, err := json.Marshal(object)
 		if err != nil {
 			fmt.Println(err)
@@ -100,19 +108,14 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 		objectJson = string(ObjectJsonRaw)
 	} else {
-		objectMeta, err := service.ExtractMetadata(filePathCleaned)
-		objectMeta.Checksum = checksum
+		object, err = service.ExtractMetadata(filePathCleaned)
+		object.Checksum = checksum
+		object.Size = objectSize
 		if err != nil {
 			fmt.Println("could not extract metadata for file: " + filePathCleaned)
 			return
 		}
-		ObjectJsonRaw, err := json.Marshal(objectMeta)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-
-		err = json.Unmarshal(ObjectJsonRaw, &object)
+		ObjectJsonRaw, err := json.Marshal(object)
 		if err != nil {
 			fmt.Println(err)
 			return
