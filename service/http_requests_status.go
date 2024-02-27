@@ -2,12 +2,12 @@ package service
 
 import (
 	"bytes"
+	"crypto/tls"
 	"emperror.dev/errors"
 	"encoding/json"
 	"io"
 	"net/http"
 	"ona/models"
-	"time"
 )
 
 func GetStatus(id string) (models.ArchivingStatus, error) {
@@ -36,11 +36,24 @@ func CreateStatus(status models.ArchivingStatus) (models.ArchivingStatus, error)
 }
 
 func sendRequest(req *http.Request) (models.ArchivingStatus, error) {
+	defaultTransport := http.DefaultTransport.(*http.Transport)
+
+	// Create new Transport that ignores self-signed SSL
+	customTransport := &http.Transport{
+		Proxy:                 defaultTransport.Proxy,
+		DialContext:           defaultTransport.DialContext,
+		MaxIdleConns:          defaultTransport.MaxIdleConns,
+		IdleConnTimeout:       defaultTransport.IdleConnTimeout,
+		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
+		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: customTransport}
+
 	archivingStatus := models.ArchivingStatus{}
 	bearer, err := GetBearer()
 	req.Header.Add("Authorization", bearer)
 
-	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err == nil {
 		if resp.StatusCode != 200 {
