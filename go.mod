@@ -4,7 +4,6 @@ go 1.21.1
 
 require (
 	emperror.dev/errors v0.8.1
-	github.com/BurntSushi/toml v1.3.2
 	github.com/eventials/go-tus v0.0.0-20220610120217-05d0564bb571
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/je4/filesystem/v2 v2.0.2
@@ -19,6 +18,7 @@ require (
 
 require (
 	emperror.dev/emperror v0.33.0 // indirect
+	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/atsushinee/go-markdown-generator v0.0.0-20231027094725-92d26ffbe778 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect

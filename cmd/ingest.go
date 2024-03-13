@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
+	"net/http"
 	"ona/models"
 	"ona/service"
 	"os"
@@ -129,10 +131,24 @@ func sendFile(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	defaultTransport := http.DefaultTransport.(*http.Transport)
+
+	// Create new Transport that ignores self-signed SSL
+	customTransport := &http.Transport{
+		Proxy:                 defaultTransport.Proxy,
+		DialContext:           defaultTransport.DialContext,
+		MaxIdleConns:          defaultTransport.MaxIdleConns,
+		IdleConnTimeout:       defaultTransport.IdleConnTimeout,
+		ExpectContinueTimeout: defaultTransport.ExpectContinueTimeout,
+		TLSHandshakeTimeout:   defaultTransport.TLSHandshakeTimeout,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+	}
+	httpClient := &http.Client{Transport: customTransport}
+
 	// create the tus client.
 	url := configObj.Url
 	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}}})
+		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}}, HttpClient: httpClient})
 	if err != nil {
 		fmt.Println("could not create client for: " + url)
 		return
