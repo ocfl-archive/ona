@@ -7,93 +7,11 @@ import (
 	"github.com/je4/filesystem/v2/pkg/osfsrw"
 	"github.com/je4/filesystem/v2/pkg/writefs"
 	"github.com/je4/filesystem/v2/pkg/zipfs"
-	"github.com/je4/gocfl/v2/pkg/extension"
+	"github.com/je4/gocfl/v2/gocfl/cmd"
 	"github.com/je4/gocfl/v2/pkg/ocfl"
-	"github.com/je4/gocfl/v2/pkg/subsystem/migration"
-	"github.com/je4/gocfl/v2/pkg/subsystem/thumbnail"
-	ironmaiden "github.com/je4/indexer/v2/pkg/indexer"
 	lm "github.com/je4/utils/v2/pkg/logger"
-	"github.com/op/go-logging"
-	"io/fs"
 	"ona/models"
 )
-
-func initExtensionFactory(extensionParams map[string]string, indexerAddr string, indexerLocalCache bool, indexerActions *ironmaiden.ActionDispatcher, migration *migration.Migration, thumbnail *thumbnail.Thumbnail, sourceFS fs.FS, logger *logging.Logger) (*ocfl.ExtensionFactory, error) {
-	extensionFactory, err := ocfl.NewExtensionFactory(extensionParams, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot instantiate extension factory")
-	}
-
-	extensionFactory.AddCreator(extension.DigestAlgorithmsName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewDigestAlgorithmsFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.StorageLayoutFlatDirectName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewStorageLayoutFlatDirectFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.StorageLayoutHashAndIdNTupleName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewStorageLayoutHashAndIdNTupleFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.StorageLayoutHashedNTupleName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewStorageLayoutHashedNTupleFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.FlatOmitPrefixStorageLayoutName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewFlatOmitPrefixStorageLayoutFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.NTupleOmitPrefixStorageLayoutName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewNTupleOmitPrefixStorageLayoutFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.DirectCleanName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewDirectCleanFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.PathDirectName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewPathDirectFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.StorageLayoutPairTreeName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewStorageLayoutPairTreeFS(fsys)
-	})
-
-	extensionFactory.AddCreator(ocfl.ExtensionManagerName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return ocfl.NewInitialDummyFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.ContentSubPathName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewContentSubPathFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.MetaFileName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewMetaFileFS(fsys)
-	})
-
-	extensionFactory.AddCreator(extension.IndexerName, func(fsys fs.FS) (ocfl.Extension, error) {
-		ext, err := extension.NewIndexerFS(fsys, indexerAddr, indexerActions, indexerLocalCache, logger)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot create new indexer from filesystem")
-		}
-		return ext, nil
-	})
-
-	extensionFactory.AddCreator(extension.MigrationName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewMigrationFS(fsys, migration, logger)
-	})
-
-	extensionFactory.AddCreator(extension.ThumbnailName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewThumbnailFS(fsys, thumbnail, logger)
-	})
-
-	extensionFactory.AddCreator(extension.FilesystemName, func(fsys fs.FS) (ocfl.Extension, error) {
-		return extension.NewFilesystemFS(fsys, logger)
-	})
-
-	return extensionFactory, nil
-}
 
 func ExtractMetadata(storageRootPath string) (models.Object, error) {
 	daLogger, lf := lm.CreateLogger("ocfl-reader",
@@ -124,7 +42,7 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 		}
 	}()
 
-	extensionFactory, err := initExtensionFactory(map[string]string{},
+	extensionFactory, err := cmd.InitExtensionFactory(map[string]string{},
 		"",
 		false,
 		nil,
