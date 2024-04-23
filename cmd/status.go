@@ -9,7 +9,7 @@ import (
 var generateCmdStatus = &cobra.Command{
 	Use:   "status",
 	Short: "Get status",
-	Long: `Send status of copying process.
+	Long: `Receive status of copying process.
 	For example:
 	ona status -i 1a11f892-e94b-47da-89d3-ceee985e0d8c
 	`,

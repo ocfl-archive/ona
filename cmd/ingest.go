@@ -26,9 +26,13 @@ const (
 var generateCmd = &cobra.Command{
 	Use:   "ingest",
 	Short: "Send files to storage",
-	Long: `Send files to storage.
+	Long: `Send files to storage. Only a link to zip file should be provided.
+	To fill checksum field in data base you should have a file with checksum in the same folder as the file to be stored
+	and named the same way with addition *.sha512
 	For example:
 	ona ingest -q -p 123-345.zip
+	will store 123-345.zip to DLZA without checksum. To add checksum you should add a file that contains checksum in the 
+	same folder with name 123-345.zip.sha512
 	`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
@@ -39,7 +43,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 	generateCmd.Flags().StringP("json", "j", "", "Path to json file")
 	generateCmd.Flags().StringP("path", "p", "", "Path to file")
-	generateCmd.Flags().BoolP("quiet", "q", false, "Should the process information be showed")
+	generateCmd.Flags().BoolP("quiet", "q", false, "The process information should not be showed")
 	generateCmd.Flags().BoolP("wait", "w", false, "Wait until the order is finished")
 }
 

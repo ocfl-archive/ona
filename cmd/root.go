@@ -12,13 +12,13 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "ona",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "Tool to store data to DLZA",
+	Long: `With help of this tool you could store data to DLZA and retrieve status information. With
+help of different flags you could tune the download process as needed.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Example:
+
+ingest -w -p C:\Users\SchwarzerPeter\Desktop\NewSips\zhb_e-manuscripta-2zip`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
