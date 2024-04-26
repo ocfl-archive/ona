@@ -5,17 +5,11 @@ import (
 	"github.com/joho/godotenv"
 	"ona/configuration"
 	"os"
-	"path"
-	"path/filepath"
-	"runtime"
 	"strconv"
-	"strings"
 )
 
 func GetConfig() *configuration.Config {
-	_, b, _, _ := runtime.Caller(0)
-	d1 := strings.Replace(filepath.ToSlash(path.Join(path.Dir(b))), "/service", "", -1)
-	err := godotenv.Load(d1 + "/.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		fmt.Println(err)
 	}
