@@ -30,7 +30,7 @@ var generateCmd = &cobra.Command{
 	To fill checksum field in data base you should have a file with checksum in the same folder as the file to be stored
 	and named the same way with addition *.sha512
 	For example:
-	ona ingest -q -p 123-345.zip
+	ona ingest -q -p C:\Users\123-345.zip -c C:\Users\config.yml
 	will store 123-345.zip to DLZA without checksum. To add checksum you should add a file that contains checksum in the 
 	same folder with name 123-345.zip.sha512
 	`,
@@ -53,23 +53,29 @@ func sendFile(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	configObj := service.GetConfig()
+	cfgFilePath, err := cmd.Flags().GetString("config")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	configObj := service.GetConfig(cfgFilePath)
+
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	filePathRow, _ := cmd.Flags().GetString("path")
-	if filePathRow == "" {
+	filePathRaw, _ := cmd.Flags().GetString("path")
+	if filePathRaw == "" {
 		fmt.Println("You should should specify path")
 		return
 	}
-	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRow))
+	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRaw))
 	file, err := os.Open(filePathCleaned)
 
 	if err != nil {
-		fmt.Println("could not open file: " + filePathRow)
+		fmt.Println("could not open file: " + filePathRaw)
 		return
 	}
 	defer file.Close()
@@ -129,7 +135,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		objectJson = string(ObjectJsonRaw)
 	}
 
-	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying})
+	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying}, *configObj)
 	if err != nil {
 		fmt.Println("could not create initial status")
 		return
@@ -205,7 +211,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	if wait {
 		for {
-			archivedStatusW, err := service.GetStatus(archivedStatus.Id)
+			archivedStatusW, err := service.GetStatus(archivedStatus.Id, *configObj)
 			if err != nil {
 				fmt.Println("could not get initial status with Id: " + archivedStatus.Id)
 				return

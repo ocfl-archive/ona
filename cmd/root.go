@@ -16,9 +16,12 @@ var rootCmd = &cobra.Command{
 	Long: `With help of this tool you could store data to DLZA and retrieve status information. With
 help of different flags you could tune the download process as needed.
 
+For every command certain environmental variables should be set or path to .yml or .toml file with
+needed variables should be provided after "config" or short "-c"
+
 Example:
 
-ingest -w -p C:\Users\SchwarzerPeter\Desktop\NewSips\zhb_e-manuscripta-2zip`,
+ingest -w -p C:\Users\zhb_e-manuscripta-2zip -c C:\Users\config.yml`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -43,4 +46,5 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringP("config", "c", "", "Path to configuration file")
 }

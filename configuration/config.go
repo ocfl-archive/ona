@@ -1,10 +1,10 @@
 package configuration
 
 type Config struct {
-	Url       string
-	Key       string
-	ChunkSize int64
-	BarPause  int
-	StatusUrl string
-	JwtKey    string
+	Url       string `yaml:"url" toml:"Url"`
+	Key       string `yaml:"key" toml:"Key"`
+	ChunkSize int64  `yaml:"chunk-size" toml:"ChunkSize"`
+	BarPause  int    `yaml:"bar-pause" toml:"BarPause"`
+	StatusUrl string `yaml:"status-url" toml:"StatusUrl"`
+	JwtKey    string `yaml:"jwt-key" toml:"JwtKey"`
 }

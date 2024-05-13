@@ -9,7 +9,7 @@ require (
 	github.com/je4/filesystem/v2 v2.0.11
 	github.com/je4/gocfl/v2 v2.0.4-beta6
 	github.com/je4/utils/v2 v2.0.30
-	github.com/joho/godotenv v1.5.1
+	github.com/jinzhu/configor v1.2.2
 	github.com/schollz/progressbar/v3 v3.14.2
 	github.com/spf13/cobra v1.8.0
 )

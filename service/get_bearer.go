@@ -3,17 +3,17 @@ package service
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"ona/configuration"
 	"time"
 )
 
-func GetBearer() (string, error) {
+func GetBearer(config configuration.Config) (string, error) {
 
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
 
 	claims["exp"] = time.Now().Add(time.Minute * 100).Unix()
-	config := GetConfig()
 	secret := []byte(config.JwtKey)
 	tokenStr, err := token.SignedString(secret)
 
