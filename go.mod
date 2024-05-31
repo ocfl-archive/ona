@@ -12,6 +12,8 @@ require (
 	github.com/jinzhu/configor v1.2.2
 	github.com/schollz/progressbar/v3 v3.14.2
 	github.com/spf13/cobra v1.8.0
+	gitlab.switch.ch/ub-unibas/dlza/dlza-manager v0.0.2
+
 )
 
 require (

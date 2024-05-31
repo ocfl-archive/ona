@@ -72,6 +72,19 @@ func sendFile(cmd *cobra.Command, args []string) {
 		return
 	}
 	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRaw))
+	fileName := filepath.Base(filePathCleaned)
+
+	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
+	if err != nil {
+		fmt.Println("could not get objectInstances from database check whether file exists")
+		return
+	}
+
+	if len(objectInstances.ObjectInstances) != 0 {
+		fmt.Printf("The file: %s you are trying to copy allready exists in archive\n", fileName)
+		return
+	}
+
 	file, err := os.Open(filePathCleaned)
 
 	if err != nil {
