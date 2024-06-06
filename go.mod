@@ -1,16 +1,16 @@
 module ona
 
-go 1.22.1
+go 1.22.3
 
 require (
 	emperror.dev/errors v0.8.1
 	github.com/eventials/go-tus v0.0.0-20220610120217-05d0564bb571
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/je4/filesystem/v2 v2.0.12
+	github.com/je4/filesystem/v2 v2.0.15
 	github.com/je4/gocfl/v2 v2.0.4-beta9
-	github.com/je4/utils/v2 v2.0.33
+	github.com/je4/utils/v2 v2.0.38
 	github.com/jinzhu/configor v1.2.2
-	github.com/schollz/progressbar/v3 v3.14.2
+	github.com/schollz/progressbar/v3 v3.14.3
 	github.com/spf13/cobra v1.8.0
 	gitlab.switch.ch/ub-unibas/dlza/dlza-manager v0.0.2
 
@@ -18,13 +18,13 @@ require (
 
 require (
 	emperror.dev/emperror v0.33.0 // indirect
-	github.com/BurntSushi/toml v1.3.2 // indirect
+	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/atsushinee/go-markdown-generator v0.0.0-20231027094725-92d26ffbe778 // indirect
-	github.com/bytedance/sonic v1.11.6 // indirect
+	github.com/bytedance/sonic v1.11.8 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -35,14 +35,14 @@ require (
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.4 // indirect
 	github.com/gin-contrib/multitemplate v1.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.10.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.20.0 // indirect
-	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/go-playground/validator/v10 v10.21.0 // indirect
+	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -62,7 +62,8 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/je4/goffmpeg v0.0.0-20220114092308-33ab9986404d // indirect
-	github.com/je4/indexer/v2 v2.0.10 // indirect
+	github.com/je4/indexer/v2 v2.0.11 // indirect
+	github.com/je4/trustutil/v2 v2.0.15 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
@@ -93,7 +94,7 @@ require (
 	github.com/ross-spencer/spargo v0.4.1 // indirect
 	github.com/ross-spencer/wikiprov v0.2.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
-	github.com/rs/zerolog v1.32.0 // indirect
+	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -107,15 +108,15 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
-	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
-	golang.org/x/image v0.16.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
+	golang.org/x/image v0.17.0 // indirect
+	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
-	gopkg.in/gographics/imagick.v3 v3.6.0 // indirect
+	gopkg.in/gographics/imagick.v3 v3.7.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

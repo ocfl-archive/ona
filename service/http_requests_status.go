@@ -51,14 +51,14 @@ func GetObjectInstancesByName(name string, config configuration.Config) (*dlzama
 	return objectInstances, nil
 }
 
-func CreateStatus(status models.ArchivingStatus, config configuration.Config) (models.ArchivingStatus, error) {
+func CreateStatus(statusObj models.ArchivingStatus, config configuration.Config) (models.ArchivingStatus, error) {
 	archivingStatus := models.ArchivingStatus{}
 	buf := bytes.Buffer{}
-	err := json.NewEncoder(&buf).Encode(status)
+	err := json.NewEncoder(&buf).Encode(statusObj)
 	if err != nil {
 		return archivingStatus, err
 	}
-	req, err := http.NewRequest(http.MethodPost, config.StatusUrl, &buf)
+	req, err := http.NewRequest(http.MethodPost, config.StatusUrl+status, &buf)
 	if err != nil {
 		return archivingStatus, err
 	}
