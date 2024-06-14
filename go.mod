@@ -1,4 +1,4 @@
-module ona
+module gitlab.switch.ch/ub-unibas/dlza/ona
 
 go 1.22.3
 
