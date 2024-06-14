@@ -10,7 +10,7 @@ import (
 	"github.com/je4/gocfl/v2/gocfl/cmd"
 	"github.com/je4/gocfl/v2/pkg/ocfl"
 	lm "github.com/je4/utils/v2/pkg/logger"
-	"ona/models"
+	"gitlab.switch.ch/ub-unibas/dlza/ona/models"
 )
 
 func ExtractMetadata(storageRootPath string) (models.Object, error) {

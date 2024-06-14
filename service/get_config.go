@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/jinzhu/configor"
+	"gitlab.switch.ch/ub-unibas/dlza/ona/configuration"
 	"log"
-	"ona/configuration"
 	"os"
 	"path/filepath"
 	"strconv"

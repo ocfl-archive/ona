@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"ona/service"
+	"gitlab.switch.ch/ub-unibas/dlza/ona/service"
 )
 
 var generateCmdStored = &cobra.Command{

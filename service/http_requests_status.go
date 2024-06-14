@@ -6,10 +6,10 @@ import (
 	"emperror.dev/errors"
 	"encoding/json"
 	"gitlab.switch.ch/ub-unibas/dlza/dlza-manager/dlzamanagerproto"
+	"gitlab.switch.ch/ub-unibas/dlza/ona/configuration"
+	"gitlab.switch.ch/ub-unibas/dlza/ona/models"
 	"io"
 	"net/http"
-	"ona/configuration"
-	"ona/models"
 )
 
 const (
