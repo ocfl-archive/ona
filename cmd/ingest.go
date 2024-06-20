@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
+	checksumImp "github.com/je4/utils/v2/pkg/checksum"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"gitlab.switch.ch/ub-unibas/dlza/ona/models"
 	"gitlab.switch.ch/ub-unibas/dlza/ona/service"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,7 +21,7 @@ import (
 const (
 	initialCopying = "initial copying"
 	archived       = "archived"
-	sha512         = ".sha512"
+	checksumType   = "sha512"
 	separator      = " *"
 )
 
@@ -45,6 +47,7 @@ func init() {
 	generateCmd.Flags().StringP("path", "p", "", "Path to file")
 	generateCmd.Flags().BoolP("quiet", "q", false, "The process information should not be showed")
 	generateCmd.Flags().BoolP("wait", "w", false, "Wait until the order is finished")
+	generateCmd.Flags().BoolP("force", "f", false, "Force to archive and retrieve checksum during the process")
 }
 
 func sendFile(cmd *cobra.Command, args []string) {
@@ -61,6 +64,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 	configObj := service.GetConfig(cfgFilePath)
 
 	quiet, err := cmd.Flags().GetBool("quiet")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -106,10 +114,36 @@ func sendFile(cmd *cobra.Command, args []string) {
 		return
 	}
 	checksum := ""
-	fileChecksum, err := os.ReadFile(filePathCleaned + sha512)
-	if err == nil {
-		checksum = strings.Split(string(fileChecksum), separator)[0]
+	if force {
+		targetFP := io.Discard
+		csWriter, err := checksumImp.NewChecksumWriter(
+			[]checksumImp.DigestAlgorithm{checksumType},
+			targetFP,
+		)
+		_, err = io.Copy(csWriter, file)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if err := csWriter.Close(); err != nil {
+			fmt.Println("cannot close checksum writer", err)
+			return
+		}
+		checksums, err := csWriter.GetChecksums()
+		if err != nil {
+			fmt.Println("cannot get checksum", err)
+		}
+		checksum = checksums[checksumType]
+	} else {
+		fileChecksum, err := os.ReadFile(filePathCleaned + "." + checksumType)
+		if err == nil {
+			checksum = strings.Split(string(fileChecksum), separator)[0]
+		} else {
+			fmt.Println("You should have a checksum file in the folder or use -f flag to produce the checksum ")
+			return
+		}
 	}
+
 	objectJson := ""
 	object := models.Object{}
 	if jsonPathRow != "" {
