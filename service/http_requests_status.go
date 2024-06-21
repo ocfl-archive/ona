@@ -15,6 +15,7 @@ import (
 const (
 	status      = "/status/"
 	storageInfo = "/object-instance/"
+	object      = "/object/"
 )
 
 func GetStatus(id string, config configuration.Config) (models.ArchivingStatus, error) {
@@ -49,6 +50,23 @@ func GetObjectInstancesByName(name string, config configuration.Config) (*dlzama
 		return objectInstances, err
 	}
 	return objectInstances, nil
+}
+
+func GetObjectsByChecksum(checksum string, config configuration.Config) (*dlzamanagerproto.Objects, error) {
+	objects := &dlzamanagerproto.Objects{}
+	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+object+checksum, nil)
+	if err != nil {
+		return objects, err
+	}
+	body, err := sendRequest(req, config)
+	if err != nil {
+		return objects, err
+	}
+	err = json.Unmarshal(body, &objects)
+	if err != nil {
+		return objects, err
+	}
+	return objects, nil
 }
 
 func CreateStatus(statusObj models.ArchivingStatus, config configuration.Config) (models.ArchivingStatus, error) {

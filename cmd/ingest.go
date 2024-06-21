@@ -84,12 +84,12 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
 	if err != nil {
-		fmt.Println("could not get objectInstances from database check whether file exists")
+		fmt.Printf("could not get objectInstances from database to check whether file name %s exists", fileName)
 		return
 	}
 
 	if len(objectInstances.ObjectInstances) != 0 {
-		fmt.Printf("The file: %s you are trying to copy allready exists in archive\n", fileName)
+		fmt.Printf("The file: %s you are trying to archive allready exists in archive\n", fileName)
 		return
 	}
 
@@ -142,6 +142,17 @@ func sendFile(cmd *cobra.Command, args []string) {
 			fmt.Println("You should have a checksum file in the folder or use -f flag to produce the checksum ")
 			return
 		}
+	}
+
+	objects, err := service.GetObjectsByChecksum(checksum, *configObj)
+	if err != nil {
+		fmt.Printf("could not get objects from database to check whether object with checksum %s exists", checksum)
+		return
+	}
+
+	if len(objects.Objects) != 0 {
+		fmt.Printf("The file with checksum: %s you are trying to archive allready exists in archive\n", checksum)
+		return
 	}
 
 	objectJson := ""
