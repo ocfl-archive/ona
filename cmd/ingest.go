@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -80,18 +81,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		return
 	}
 	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRaw))
-	fileName := filepath.Base(filePathCleaned)
-
-	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
-	if err != nil {
-		fmt.Printf("could not get objectInstances from database to check whether file name %s exists", fileName)
-		return
-	}
-
-	if len(objectInstances.ObjectInstances) != 0 {
-		fmt.Printf("The file: %s you are trying to archive allready exists in archive\n", fileName)
-		return
-	}
+	extension := filepath.Ext(filePathCleaned)
 
 	file, err := os.Open(filePathCleaned)
 
@@ -192,6 +182,18 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 		objectJson = string(ObjectJsonRaw)
 	}
+	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
+	fileName := re.ReplaceAllString(object.Signature+extension, "_")
+	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
+	if err != nil {
+		fmt.Printf("could not get objectInstances from database to check whether file name %s exists", fileName)
+		return
+	}
+
+	if len(objectInstances.ObjectInstances) != 0 {
+		fmt.Printf("The file: %s you are trying to archive allready exists in archive\n", fileName)
+		return
+	}
 
 	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying}, *configObj)
 	if err != nil {
@@ -216,7 +218,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 	// create the tus client.
 	url := configObj.Url
 	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}}, HttpClient: httpClient})
+		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}}, HttpClient: httpClient})
 	if err != nil {
 		fmt.Println("could not create client for: " + url)
 		return
