@@ -21,8 +21,8 @@ const (
 	NeededQuality    = "needed-quality/"
 )
 
-func GetQualityForObject(id string, resultingOrNeeded string, config configuration.Config) (pb.SizeAndId, error) {
-	quality := pb.SizeAndId{}
+func GetQualityForObject(id string, resultingOrNeeded string, config configuration.Config) (*pb.SizeAndId, error) {
+	quality := &pb.SizeAndId{}
 	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+object+resultingOrNeeded+id, nil)
 	if err != nil {
 		return quality, err
