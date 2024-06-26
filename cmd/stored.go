@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/jwalton/go-supportscolor"
 	"github.com/spf13/cobra"
 	"gitlab.switch.ch/ub-unibas/dlza/ona/service"
 )
@@ -65,6 +66,10 @@ func checkStorage(cmd *cobra.Command, args []string) {
 		} else {
 			color = colorRed
 		}
-		fmt.Printf("File with name %v is stored on %v storage locations %v with quality %v%v. The lowest quality needed: %v\n", name, len(objectInstances.ObjectInstances), color, resultingQuality, colorNone, qualityNeeded)
+		if !supportscolor.Stdout().SupportsColor {
+			fmt.Printf("File with name %v is stored on %v storage locations with quality %v. The lowest quality needed: %v\n", name, len(objectInstances.ObjectInstances), resultingQuality, qualityNeeded)
+		} else {
+			fmt.Printf("File with name %v is stored on %v storage locations %v with quality %v%v. The lowest quality needed: %v\n", name, len(objectInstances.ObjectInstances), color, resultingQuality, colorNone, qualityNeeded)
+		}
 	}
 }

@@ -65,6 +65,7 @@ require (
 	github.com/je4/indexer/v2 v2.0.11 // indirect
 	github.com/je4/trustutil/v2 v2.0.18 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/jwalton/go-supportscolor v1.2.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/kr/fs v0.1.0 // indirect
