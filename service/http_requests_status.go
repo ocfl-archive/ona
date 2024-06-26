@@ -6,6 +6,7 @@ import (
 	"emperror.dev/errors"
 	"encoding/json"
 	"gitlab.switch.ch/ub-unibas/dlza/dlza-manager/dlzamanagerproto"
+	pb "gitlab.switch.ch/ub-unibas/dlza/dlza-manager/dlzamanagerproto"
 	"gitlab.switch.ch/ub-unibas/dlza/ona/configuration"
 	"gitlab.switch.ch/ub-unibas/dlza/ona/models"
 	"io"
@@ -13,10 +14,29 @@ import (
 )
 
 const (
-	status      = "/status/"
-	storageInfo = "/object-instance/"
-	object      = "/object/"
+	status           = "/status/"
+	storageInfo      = "/object-instance/"
+	object           = "/object/"
+	ResultingQuality = "resulting-quality/"
+	NeededQuality    = "needed-quality/"
 )
+
+func GetQualityForObject(id string, resultingOrNeeded string, config configuration.Config) (pb.SizeAndId, error) {
+	quality := pb.SizeAndId{}
+	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+object+resultingOrNeeded+id, nil)
+	if err != nil {
+		return quality, err
+	}
+	body, err := sendRequest(req, config)
+	if err != nil {
+		return quality, err
+	}
+	err = json.Unmarshal(body, &quality)
+	if err != nil {
+		return quality, err
+	}
+	return quality, nil
+}
 
 func GetStatus(id string, config configuration.Config) (models.ArchivingStatus, error) {
 	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+status+id, nil)

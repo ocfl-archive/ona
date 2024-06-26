@@ -6,6 +6,10 @@ import (
 	"gitlab.switch.ch/ub-unibas/dlza/ona/service"
 )
 
+const colorRed = "\033[0;31m"
+const colorGreen = "\033[1;32m"
+const colorNone = "\033[0m"
+
 var generateCmdStored = &cobra.Command{
 	Use:   "stored",
 	Short: "Check whether/how file is stored",
@@ -40,5 +44,27 @@ func checkStorage(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("File with name %v is stored on %v storage locations\n", name, len(objectInstances.ObjectInstances))
+	if len(objectInstances.ObjectInstances) == 0 {
+		fmt.Printf("File with name %v is stored on %v storage locations\n", name, len(objectInstances.ObjectInstances))
+	} else {
+		resultingQualityPb, err := service.GetQualityForObject(objectInstances.ObjectInstances[0].ObjectId, service.ResultingQuality, *configObj)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		neededQualityPb, err := service.GetQualityForObject(objectInstances.ObjectInstances[0].ObjectId, service.NeededQuality, *configObj)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		resultingQuality := resultingQualityPb.Size
+		qualityNeeded := neededQualityPb.Size
+		color := ""
+		if resultingQualityPb.Size >= qualityNeeded {
+			color = colorGreen
+		} else {
+			color = colorRed
+		}
+		fmt.Printf("File with name %v is stored on %v storage locations %v with quality %v%v. The lowest quality needed: %v\n", name, len(objectInstances.ObjectInstances), color, resultingQuality, colorNone, qualityNeeded)
+	}
 }
