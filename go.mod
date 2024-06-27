@@ -8,10 +8,11 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/je4/filesystem/v2 v2.0.15
 	github.com/je4/gocfl/v2 v2.0.4-beta9
-	github.com/je4/utils/v2 v2.0.38
+	github.com/je4/utils/v2 v2.0.41
 	github.com/jinzhu/configor v1.2.2
+	github.com/jwalton/go-supportscolor v1.2.0
 	github.com/schollz/progressbar/v3 v3.14.4
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	gitlab.switch.ch/ub-unibas/dlza/dlza-manager v0.0.2
 
 )
@@ -24,7 +25,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/atsushinee/go-markdown-generator v0.0.0-20231027094725-92d26ffbe778 // indirect
-	github.com/bytedance/sonic v1.11.8 // indirect
+	github.com/bytedance/sonic v1.11.9 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -63,9 +64,8 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/je4/goffmpeg v0.0.0-20220114092308-33ab9986404d // indirect
 	github.com/je4/indexer/v2 v2.0.11 // indirect
-	github.com/je4/trustutil/v2 v2.0.18 // indirect
+	github.com/je4/trustutil/v2 v2.0.19 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/jwalton/go-supportscolor v1.2.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/kr/fs v0.1.0 // indirect
@@ -73,7 +73,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/minio/minio-go/v7 v7.0.71 // indirect
+	github.com/minio/minio-go/v7 v7.0.72 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -111,7 +111,7 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
-	golang.org/x/image v0.17.0 // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
