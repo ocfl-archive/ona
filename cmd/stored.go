@@ -71,16 +71,5 @@ func checkStorage(cmd *cobra.Command, args []string) {
 		} else {
 			fmt.Printf("File with name %v is stored on %v storage locations %v with quality %v%v. The lowest quality needed: %v\n", name, len(objectInstances.ObjectInstances), color, resultingQuality, colorNone, qualityNeeded)
 		}
-		if supportscolor.Stdout().SupportsColor {
-			fmt.Println("Terminal stdout supports color")
-		}
-
-		if supportscolor.Stdout().Has256 {
-			fmt.Println("Terminal stdout supports 256 colors")
-		}
-
-		if supportscolor.Stderr().Has16m {
-			fmt.Println("Terminal stderr supports 16 million colors (true color)")
-		}
 	}
 }
