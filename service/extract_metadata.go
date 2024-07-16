@@ -7,20 +7,24 @@ import (
 	"github.com/je4/filesystem/v2/pkg/osfsrw"
 	"github.com/je4/filesystem/v2/pkg/writefs"
 	"github.com/je4/filesystem/v2/pkg/zipfs"
-	"github.com/je4/gocfl/v2/gocfl/cmd"
-	"github.com/je4/gocfl/v2/pkg/ocfl"
-	lm "github.com/je4/utils/v2/pkg/logger"
+	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
+	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
+	"github.com/rs/zerolog"
 	"gitlab.switch.ch/ub-unibas/dlza/ona/models"
+	"io"
+	"os"
+	"time"
 )
 
 func ExtractMetadata(storageRootPath string) (models.Object, error) {
-	daLogger, lf := lm.CreateLogger("ocfl-reader",
-		"",
-		nil,
-		"ERROR",
-		`%{time:2006-01-02T15:04:05.000} %{shortpkg}::%{longfunc} [%{shortfile}] > %{level:.5s} - %{message}`,
-	)
-	defer lf.Close()
+	var out io.Writer = os.Stdout
+
+	output := zerolog.ConsoleWriter{Out: out, TimeFormat: time.RFC3339}
+	_logger := zerolog.New(output).With().Timestamp().Logger()
+	_logger.Level(zLogger.LogLevel("DEBUG"))
+	var logger zLogger.ZLogger = &_logger
+	daLogger := zLogger.NewZWrapper(logger)
 
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
@@ -49,13 +53,13 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 		nil,
 		nil,
 		nil,
-		daLogger)
+		logger)
 	if err != nil {
 		return models.Object{}, errors.Wrap(err, "cannot instantiate extension factory")
 	}
 
 	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, daLogger)
+	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger)
 	if err != nil {
 		return models.Object{}, err
 	}
