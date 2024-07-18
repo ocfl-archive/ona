@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/jinzhu/configor"
-	"gitlab.switch.ch/ub-unibas/dlza/ona/configuration"
+	"github.com/ocfl-archive/ona/configuration"
 	"log"
 	"os"
 	"path/filepath"

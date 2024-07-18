@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"emperror.dev/errors"
 	"encoding/json"
+	"github.com/ocfl-archive/ona/configuration"
+	"github.com/ocfl-archive/ona/models"
 	"gitlab.switch.ch/ub-unibas/dlza/dlza-manager/dlzamanagerproto"
 	pb "gitlab.switch.ch/ub-unibas/dlza/dlza-manager/dlzamanagerproto"
-	"gitlab.switch.ch/ub-unibas/dlza/ona/configuration"
-	"gitlab.switch.ch/ub-unibas/dlza/ona/models"
 	"io"
 	"net/http"
 )

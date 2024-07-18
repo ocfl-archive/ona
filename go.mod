@@ -1,4 +1,4 @@
-module gitlab.switch.ch/ub-unibas/dlza/ona
+module github.com/ocfl-archive/ona
 
 go 1.22.3
 
@@ -11,6 +11,7 @@ require (
 	github.com/jinzhu/configor v1.2.2
 	github.com/jwalton/go-supportscolor v1.2.0
 	github.com/ocfl-archive/gocfl/v2 v2.0.4-beta13
+	github.com/rs/zerolog v1.33.0
 	github.com/schollz/progressbar/v3 v3.14.4
 	github.com/spf13/cobra v1.8.1
 	gitlab.switch.ch/ub-unibas/dlza/dlza-manager v0.0.2
@@ -68,7 +69,6 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/je4/filesystem/v3 v3.0.11 // indirect
 	github.com/je4/goffmpeg v0.0.0-20220114092308-33ab9986404d // indirect
-	github.com/je4/indexer/v2 v2.0.11 // indirect
 	github.com/je4/indexer/v3 v3.0.5 // indirect
 	github.com/je4/trustutil/v2 v2.0.19 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -101,7 +101,6 @@ require (
 	github.com/ross-spencer/spargo v0.4.1 // indirect
 	github.com/ross-spencer/wikiprov v0.2.0 // indirect
 	github.com/rs/xid v1.5.0 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/smallstep/certinfo v1.12.2 // indirect
@@ -129,7 +128,6 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/gographics/imagick.v3 v3.7.0 // indirect
-	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect

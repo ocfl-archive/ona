@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/jwalton/go-supportscolor"
+	"github.com/ocfl-archive/ona/service"
 	"github.com/spf13/cobra"
-	"gitlab.switch.ch/ub-unibas/dlza/ona/service"
 )
 
 const colorRed = "\033[0;31m"

@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt"
-	"gitlab.switch.ch/ub-unibas/dlza/ona/configuration"
+	"github.com/ocfl-archive/ona/configuration"
 	"time"
 )
 

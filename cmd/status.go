@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/ocfl-archive/ona/service"
 	"github.com/spf13/cobra"
-	"gitlab.switch.ch/ub-unibas/dlza/ona/service"
 )
 
 var generateCmdStatus = &cobra.Command{
