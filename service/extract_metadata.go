@@ -22,7 +22,7 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 
 	output := zerolog.ConsoleWriter{Out: out, TimeFormat: time.RFC3339}
 	_logger := zerolog.New(output).With().Timestamp().Logger()
-	_logger.Level(zLogger.LogLevel("DEBUG"))
+	_logger.Level(zLogger.LogLevel("INFO"))
 	var logger zLogger.ZLogger = &_logger
 	daLogger := zLogger.NewZWrapper(logger)
 
@@ -102,6 +102,8 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 	object.IngestWorkflow = objectJson["ingest_workflow"].(string)
 	object.LastChanged = objectJson["last_changed"].(string)
 	object.Organisation = objectJson["organisation"].(string)
+	object.Holding = objectJson["holding"].(string)
+	object.Expiration = objectJson["expiration"].(string)
 	object.OrganisationId = objectJson["organisation_id"].(string)
 	referencesRaw := objectJson["references"].([]any)
 	for _, item := range referencesRaw {
@@ -110,6 +112,10 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 	setsRaw := objectJson["sets"].([]any)
 	for _, item := range setsRaw {
 		object.Sets = append(object.Sets, item.(string))
+	}
+	authorsRaw := objectJson["authors"].([]any)
+	for _, item := range authorsRaw {
+		object.Authors = append(object.Authors, item.(string))
 	}
 	object.Signature = objectJson["signature"].(string)
 	object.Title = objectJson["title"].(string)

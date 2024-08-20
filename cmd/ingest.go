@@ -184,6 +184,17 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
 	fileName := re.ReplaceAllString(object.Signature+extension, "_")
+
+	status, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, *configObj)
+	if err != nil {
+		fmt.Printf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
+		return
+	}
+	if status != "" {
+		fmt.Printf(err.Error())
+		return
+	}
+
 	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
 	if err != nil {
 		fmt.Printf("could not get objectInstances from database to check whether file name %s exists", fileName)

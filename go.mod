@@ -1,6 +1,6 @@
 module github.com/ocfl-archive/ona
 
-go 1.22.3
+go 1.23.0
 
 require (
 	emperror.dev/errors v0.8.1
@@ -10,7 +10,7 @@ require (
 	github.com/je4/utils/v2 v2.0.41
 	github.com/jinzhu/configor v1.2.2
 	github.com/jwalton/go-supportscolor v1.2.0
-	github.com/ocfl-archive/dlza-manager v0.0.3
+	github.com/ocfl-archive/dlza-manager v0.0.6
 	github.com/ocfl-archive/gocfl/v2 v2.0.4-beta13
 	github.com/rs/zerolog v1.33.0
 	github.com/schollz/progressbar/v3 v3.14.4
@@ -115,16 +115,16 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4 // indirect
 	go.opencensus.io v0.24.0 // indirect
-	go.step.sm/crypto v0.50.0 // indirect
+	go.step.sm/crypto v0.51.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7 // indirect
+	golang.org/x/crypto v0.26.0 // indirect
+	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/term v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
+	golang.org/x/term v0.23.0 // indirect
+	golang.org/x/text v0.17.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/gographics/imagick.v3 v3.7.0 // indirect

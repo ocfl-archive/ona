@@ -22,4 +22,7 @@ type Object struct {
 	Organisation        string   `json:"organisation"`
 	OrganisationId      string   `json:"organisation_id"`
 	OrganisationAddress string   `json:"organisation_address"`
+	Holding             string   `json:"holding"`
+	Authors             []string `json:"authors"`
+	Expiration          string   `json:"expiration"`
 }

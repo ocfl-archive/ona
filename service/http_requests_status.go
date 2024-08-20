@@ -11,15 +11,34 @@ import (
 	"github.com/ocfl-archive/ona/models"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 const (
+	aliasAndSize     = "/storage-location/collection/"
 	status           = "/status/"
 	storageInfo      = "/object-instance/"
 	object           = "/object/"
 	ResultingQuality = "resulting-quality/"
 	NeededQuality    = "needed-quality/"
 )
+
+func GetStorageLocationsStatusForCollectionAlias(alias string, size int64, config configuration.Config) (string, error) {
+	var status pb.Id
+	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+aliasAndSize+alias+"/"+strconv.FormatInt(size, 10), nil)
+	if err != nil {
+		return "error", err
+	}
+	body, err := sendRequest(req, config)
+	if err != nil {
+		return "error", err
+	}
+	err = json.Unmarshal(body, &status)
+	if err != nil {
+		return "error", err
+	}
+	return status.Id, nil
+}
 
 func GetQualityForObject(id string, resultingOrNeeded string, config configuration.Config) (*pb.SizeAndId, error) {
 	quality := &pb.SizeAndId{}
