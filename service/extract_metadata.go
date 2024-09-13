@@ -123,6 +123,12 @@ func ExtractMetadata(storageRootPath string) (models.Object, error) {
 			object.Authors = append(object.Authors, item.(string))
 		}
 	}
+	if objectJson["keywords"] != nil {
+		keywordsRaw := objectJson["keywords"].([]any)
+		for _, item := range keywordsRaw {
+			object.Keywords = append(object.Keywords, item.(string))
+		}
+	}
 	object.Signature = objectJson["signature"].(string)
 	object.Title = objectJson["title"].(string)
 	object.User = objectJson["user"].(string)
