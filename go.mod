@@ -1,20 +1,22 @@
 module github.com/ocfl-archive/ona
 
-go 1.23.0
+go 1.23.1
 
 require (
 	emperror.dev/errors v0.8.1
 	github.com/eventials/go-tus v0.0.0-20220610120217-05d0564bb571
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/je4/certloader/v2 v2.0.8
 	github.com/je4/filesystem/v2 v2.0.15
 	github.com/je4/utils/v2 v2.0.50
 	github.com/jinzhu/configor v1.2.2
 	github.com/jwalton/go-supportscolor v1.2.0
 	github.com/ocfl-archive/dlza-manager v0.0.6
-	github.com/ocfl-archive/gocfl/v2 v2.0.4-beta14
+	github.com/ocfl-archive/gocfl/v2 v2.0.5
 	github.com/rs/zerolog v1.33.0
 	github.com/schollz/progressbar/v3 v3.14.4
 	github.com/spf13/cobra v1.8.1
+	gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4
 
 )
 
@@ -75,7 +77,6 @@ require (
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/je4/certloader/v2 v2.0.8 // indirect
 	github.com/je4/filesystem/v3 v3.0.14 // indirect
 	github.com/je4/goffmpeg v0.0.0-20220114092308-33ab9986404d // indirect
 	github.com/je4/indexer/v3 v3.0.5 // indirect
@@ -127,7 +128,6 @@ require (
 	github.com/tobischo/gokeepasslib/v3 v3.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
-	gitlab.switch.ch/ub-unibas/go-ublogger v0.0.0-20240612084645-ba4f8357c0d4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.step.sm/crypto v0.51.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

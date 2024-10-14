@@ -12,18 +12,9 @@ import (
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
 	"github.com/rs/zerolog"
-	"io"
-	"os"
-	"time"
 )
 
-func ExtractMetadata(storageRootPath string) (models.Object, error) {
-	var out io.Writer = os.Stdout
-
-	output := zerolog.ConsoleWriter{Out: out, TimeFormat: time.RFC3339}
-	_logger := zerolog.New(output).With().Timestamp().Logger()
-	_logger.Level(zLogger.LogLevel("INFO"))
-	var logger zLogger.ZLogger = &_logger
+func ExtractMetadata(storageRootPath string, logger *zerolog.Logger) (models.Object, error) {
 	daLogger := zLogger.NewZWrapper(logger)
 
 	fsFactory, err := writefs.NewFactory()

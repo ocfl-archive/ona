@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
+	"github.com/je4/certloader/v2/pkg/loader"
 	checksumImp "github.com/je4/utils/v2/pkg/checksum"
 	"github.com/ocfl-archive/ona/models"
 	"github.com/ocfl-archive/ona/service"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -63,6 +66,33 @@ func sendFile(cmd *cobra.Command, args []string) {
 		return
 	}
 	configObj := service.GetConfig(cfgFilePath)
+	var loggerTLSConfig *tls.Config
+	var loggerLoader io.Closer
+	if configObj.Log.Stash.TLS != nil {
+		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(configObj.Log.Stash.TLS, nil)
+		if err != nil {
+			log.Fatalf("cannot create client loader: %v", err)
+		}
+		defer loggerLoader.Close()
+	}
+	_logger, _logstash, _logfile := ublogger.CreateUbMultiLoggerTLS(configObj.Log.Level, configObj.Log.File,
+		ublogger.SetDataset(configObj.Log.Stash.Dataset),
+		ublogger.SetLogStash(configObj.Log.Stash.LogstashHost, configObj.Log.Stash.LogstashPort, configObj.Log.Stash.Namespace, configObj.Log.Stash.LogstashTraceLevel),
+		ublogger.SetTLS(configObj.Log.Stash.TLS != nil),
+		ublogger.SetTLSConfig(loggerTLSConfig),
+	)
+	/*
+		if err != nil {
+			log.Fatalf("cannot create logger: %v", err)
+		}
+
+	*/
+	if _logstash != nil {
+		defer _logstash.Close()
+	}
+	if _logfile != nil {
+		defer _logfile.Close()
+	}
 
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
@@ -168,7 +198,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 		objectJson = string(ObjectJsonRaw)
 	} else {
-		object, err = service.ExtractMetadata(filePathCleaned)
+		object, err = service.ExtractMetadata(filePathCleaned, _logger.Logger)
 		object.Checksum = checksum
 		object.Size = objectSize
 		if err != nil {

@@ -29,6 +29,8 @@ func GetConfig(cfgFilePathRaw string) *configuration.Config {
 		configObj.ChunkSize = int64(chunkSize)
 		configObj.BarPause, _ = strconv.Atoi(os.Getenv("BAR_PAUSE"))
 	}
-
+	if configObj.Log.Level == "" {
+		configObj.Log.Level = "INFO"
+	}
 	return &configObj
 }
