@@ -2,61 +2,42 @@ package service
 
 import (
 	"context"
-	"emperror.dev/errors"
-	"fmt"
-	"github.com/je4/filesystem/v2/pkg/osfsrw"
 	"github.com/je4/filesystem/v2/pkg/writefs"
-	"github.com/je4/filesystem/v2/pkg/zipfs"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	"github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
-	"github.com/rs/zerolog"
 )
 
-func ExtractMetadata(storageRootPath string, logger *zerolog.Logger) (models.Object, error) {
-	daLogger := zLogger.NewZWrapper(logger)
+func NewGocfl(extensionFactory *ocfl.ExtensionFactory, factory *writefs.Factory, logger zLogger.ZLogger) *Gocfl {
+	return &Gocfl{extensionFactory: extensionFactory, fsFactory: factory, logger: logger}
+}
 
-	fsFactory, err := writefs.NewFactory()
-	if err != nil {
-		return models.Object{}, errors.Wrap(err, "cannot create filesystem factory")
-	}
-	if err := fsFactory.Register(zipfs.NewCreateFSFunc(), "\\.zip$", writefs.HighFS); err != nil {
-		return models.Object{}, errors.Wrap(err, "cannot register zipfs")
-	}
-	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(), "", writefs.LowFS); err != nil {
-		return models.Object{}, errors.Wrap(err, "cannot register zipfs")
-	}
-	ocflFS, err := fsFactory.Get(storageRootPath)
+type Gocfl struct {
+	extensionFactory *ocfl.ExtensionFactory
+	fsFactory        *writefs.Factory
+	logger           zLogger.ZLogger
+}
+
+func (g *Gocfl) ExtractMetadata(storageRootPath string) (models.Object, error) {
+
+	ocflFS, err := g.fsFactory.Get(storageRootPath)
 	if err != nil {
 		return models.Object{}, err
 	}
 	defer func() {
 		if err := writefs.Close(ocflFS); err != nil {
-			daLogger.Errorf("cannot close filesystem: %v", err)
+			g.logger.Error().Msgf("cannot close filesystem: %v", err)
 		}
 	}()
 
-	extensionFactory, err := cmd.InitExtensionFactory(map[string]string{},
-		"",
-		false,
-		nil,
-		nil,
-		nil,
-		nil,
-		logger)
-	if err != nil {
-		return models.Object{}, errors.Wrap(err, "cannot instantiate extension factory")
-	}
-
 	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, extensionFactory, logger)
+	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, g.extensionFactory, g.logger)
 	if err != nil {
 		return models.Object{}, err
 	}
 	metadata, err := storageRoot.ExtractMeta("", "")
 	if err != nil {
-		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
+		g.logger.Error().Msgf("cannot extract metadata from storage root: %v\n", err)
 		return models.Object{}, err
 	}
 
@@ -67,7 +48,7 @@ func ExtractMetadata(storageRootPath string, logger *zerolog.Logger) (models.Obj
 
 	objectRetrieved, ok := objectMetadata.Extension.(map[string]any)
 	if !ok {
-		fmt.Printf("cannot extract metadata from storage root: %v\n", err)
+		g.logger.Error().Msgf("cannot extract metadata from storage root: %v\n", err)
 		return models.Object{}, err
 	}
 

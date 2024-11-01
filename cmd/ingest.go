@@ -5,13 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
-	"github.com/je4/certloader/v2/pkg/loader"
+	"github.com/je4/filesystem/v2/pkg/osfsrw"
+	"github.com/je4/filesystem/v2/pkg/writefs"
+	"github.com/je4/filesystem/v2/pkg/zipfs"
 	checksumImp "github.com/je4/utils/v2/pkg/checksum"
+	"github.com/je4/utils/v2/pkg/zLogger"
+	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/ona/models"
 	"github.com/ocfl-archive/ona/service"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
-	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"io"
 	"log"
 	"net/http"
@@ -65,6 +70,10 @@ func sendFile(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatalf("cannot get hostname: %v", err)
+	}
 	configObj := service.GetConfig(cfgFilePath)
 	var loggerTLSConfig *tls.Config
 	var loggerLoader io.Closer
@@ -75,18 +84,19 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 		defer loggerLoader.Close()
 	}
-	_logger, _logstash, _logfile := ublogger.CreateUbMultiLoggerTLS(configObj.Log.Level, configObj.Log.File,
+	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(configObj.Log.Level, configObj.Log.File,
 		ublogger.SetDataset(configObj.Log.Stash.Dataset),
 		ublogger.SetLogStash(configObj.Log.Stash.LogstashHost, configObj.Log.Stash.LogstashPort, configObj.Log.Stash.Namespace, configObj.Log.Stash.LogstashTraceLevel),
 		ublogger.SetTLS(configObj.Log.Stash.TLS != nil),
 		ublogger.SetTLSConfig(loggerTLSConfig),
 	)
-	/*
-		if err != nil {
-			log.Fatalf("cannot create logger: %v", err)
-		}
 
-	*/
+	if err != nil {
+		log.Fatalf("cannot create logger: %v", err)
+	}
+
+	l2 := _logger.With().Timestamp().Str("host", hostname).Logger() //.Output(output)
+	var logger zLogger.ZLogger = &l2
 	if _logstash != nil {
 		defer _logstash.Close()
 	}
@@ -96,18 +106,18 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		fmt.Println(err)
+		logger.Error().Msgf(err.Error())
 		return
 	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		fmt.Println(err)
+		logger.Error().Msgf(err.Error())
 		return
 	}
 
 	filePathRaw, _ := cmd.Flags().GetString("path")
 	if filePathRaw == "" {
-		fmt.Println("You should should specify path")
+		logger.Error().Msgf("You should should specify path")
 		return
 	}
 	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRaw))
@@ -116,21 +126,21 @@ func sendFile(cmd *cobra.Command, args []string) {
 	file, err := os.Open(filePathCleaned)
 
 	if err != nil {
-		fmt.Println("could not open file: " + filePathRaw)
+		logger.Error().Msgf("could not open file: " + filePathRaw)
 		return
 	}
 	defer file.Close()
 
 	fileInfo, err := os.Stat(filePathCleaned)
 	if err != nil {
-		fmt.Println(err, "cannot read file: %v", err)
+		logger.Error().Msgf("cannot read file: %v", err)
 		return
 	}
 	objectSize := fileInfo.Size()
 
 	jsonPathRow, err := cmd.Flags().GetString("json")
 	if err != nil {
-		fmt.Println(err)
+		logger.Error().Msgf(err.Error())
 		return
 	}
 	checksum := ""
@@ -142,16 +152,16 @@ func sendFile(cmd *cobra.Command, args []string) {
 		)
 		_, err = io.Copy(csWriter, file)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error().Msgf(err.Error())
 			return
 		}
 		if err := csWriter.Close(); err != nil {
-			fmt.Println("cannot close checksum writer", err)
+			logger.Error().Msgf("cannot close checksum writer", err)
 			return
 		}
 		checksums, err := csWriter.GetChecksums()
 		if err != nil {
-			fmt.Println("cannot get checksum", err)
+			logger.Error().Msgf("cannot get checksum", err)
 		}
 		checksum = checksums[checksumType]
 	} else {
@@ -159,19 +169,45 @@ func sendFile(cmd *cobra.Command, args []string) {
 		if err == nil {
 			checksum = strings.Split(string(fileChecksum), separator)[0]
 		} else {
-			fmt.Println("You should have a checksum file in the folder or use -f flag to produce the checksum ")
+			logger.Error().Msgf("You should have a checksum file in the folder or use -f flag to produce the checksum ")
 			return
 		}
 	}
 
 	objects, err := service.GetObjectsByChecksum(checksum, *configObj)
 	if err != nil {
-		fmt.Printf("could not get objects from database to check whether object with checksum %s exists", checksum)
+		logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
 		return
 	}
 
 	if len(objects.Objects) != 0 {
-		fmt.Printf("The file with checksum: %s you are trying to archive allready exists in archive\n", checksum)
+		logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
+		return
+	}
+
+	fsFactory, err := writefs.NewFactory()
+	if err != nil {
+		logger.Error().Msgf("cannot create filesystem factory", err)
+		return
+	}
+	if err := fsFactory.Register(zipfs.NewCreateFSFunc(), "\\.zip$", writefs.HighFS); err != nil {
+		logger.Error().Msgf("cannot register zipfs", err)
+		return
+	}
+	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(), "", writefs.LowFS); err != nil {
+		logger.Error().Msgf("cannot register zipfs", err)
+		return
+	}
+	extensionFactory, err := gocflCmd.InitExtensionFactory(map[string]string{},
+		"",
+		false,
+		nil,
+		nil,
+		nil,
+		nil,
+		logger)
+	if err != nil {
+		logger.Error().Msgf("cannot instantiate extension factory", err)
 		return
 	}
 
@@ -181,33 +217,34 @@ func sendFile(cmd *cobra.Command, args []string) {
 		jsonPathCleaned := filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
 		if err != nil {
-			fmt.Println("could not open json file: " + jsonPathCleaned)
+			logger.Error().Msgf("could not open json file: " + jsonPathCleaned)
 			return
 		}
 		err = json.Unmarshal(jsonObject, &object)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error().Msgf(err.Error())
 			return
 		}
 		object.Checksum = checksum
 		object.Size = objectSize
 		ObjectJsonRaw, err := json.Marshal(object)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error().Msgf(err.Error())
 			return
 		}
 		objectJson = string(ObjectJsonRaw)
 	} else {
-		object, err = service.ExtractMetadata(filePathCleaned, _logger.Logger)
+		gocfl := service.NewGocfl(extensionFactory, fsFactory, logger)
+		object, err = gocfl.ExtractMetadata(filePathCleaned)
 		object.Checksum = checksum
 		object.Size = objectSize
 		if err != nil {
-			fmt.Println("could not extract metadata for file: " + filePathCleaned)
+			logger.Error().Msgf("could not extract metadata for file: " + filePathCleaned)
 			return
 		}
 		ObjectJsonRaw, err := json.Marshal(object)
 		if err != nil {
-			fmt.Println(err)
+			logger.Error().Msgf(err.Error())
 			return
 		}
 		objectJson = string(ObjectJsonRaw)
@@ -217,28 +254,28 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	status, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, *configObj)
 	if err != nil {
-		fmt.Printf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
+		logger.Error().Msgf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
 		return
 	}
 	if status != "" {
-		fmt.Printf(err.Error())
+		logger.Error().Msgf(err.Error())
 		return
 	}
 
 	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
 	if err != nil {
-		fmt.Printf("could not get objectInstances from database to check whether file name %s exists", fileName)
+		logger.Error().Msgf("could not get objectInstances from database to check whether file name %s exists", fileName)
 		return
 	}
 
 	if len(objectInstances.ObjectInstances) != 0 {
-		fmt.Printf("The file: %s you are trying to archive allready exists in archive\n", fileName)
+		logger.Error().Msgf("The file: %s you are trying to archive already exists in archive\n", fileName)
 		return
 	}
 
 	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying}, *configObj)
 	if err != nil {
-		fmt.Println("could not create initial status")
+		logger.Error().Msgf("could not create initial status")
 		return
 	}
 
@@ -261,20 +298,20 @@ func sendFile(cmd *cobra.Command, args []string) {
 	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
 		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}}, HttpClient: httpClient})
 	if err != nil {
-		fmt.Println("could not create client for: " + url)
+		logger.Error().Msgf("could not create client for: " + url)
 		return
 	}
 
 	// create an upload from a file.
 	upload, err := tus.NewUploadFromFile(file)
 	if err != nil {
-		fmt.Println("could not upload file: " + filePathCleaned)
+		logger.Error().Msgf("could not upload file: " + filePathCleaned)
 		return
 	}
 	// create the uploader.
 	uploader, err := client.CreateUpload(upload)
 	if err != nil {
-		fmt.Println("could not create upload for file: " + filePathCleaned + ", with err: " + err.Error())
+		logger.Error().Msgf("could not create upload for file: " + filePathCleaned + ", with err: " + err.Error())
 		return
 	}
 
@@ -314,7 +351,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		for {
 			archivedStatusW, err := service.GetStatus(archivedStatus.Id, *configObj)
 			if err != nil {
-				fmt.Println("could not get initial status with Id: " + archivedStatus.Id)
+				logger.Error().Msgf("could not get initial status with Id: " + archivedStatus.Id)
 				return
 			}
 			if archivedStatusW.Status != archived {
