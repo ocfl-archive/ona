@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"github.com/je4/filesystem/v2/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
@@ -20,7 +20,7 @@ type Gocfl struct {
 
 func (g *Gocfl) ExtractMetadata(storageRootPath string) (models.Object, error) {
 
-	ocflFS, err := g.fsFactory.Get(storageRootPath)
+	ocflFS, err := g.fsFactory.Get(storageRootPath, true)
 	if err != nil {
 		return models.Object{}, err
 	}

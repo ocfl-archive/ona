@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/eventials/go-tus"
-	"github.com/je4/filesystem/v2/pkg/osfsrw"
-	"github.com/je4/filesystem/v2/pkg/writefs"
-	"github.com/je4/filesystem/v2/pkg/zipfs"
+	"github.com/je4/filesystem/v3/pkg/osfsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/zipfs"
 	checksumImp "github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
@@ -190,11 +190,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger.Error().Msgf("cannot create filesystem factory", err)
 		return
 	}
-	if err := fsFactory.Register(zipfs.NewCreateFSFunc(), "\\.zip$", writefs.HighFS); err != nil {
+	if err := fsFactory.Register(zipfs.NewCreateFSFunc(logger), "\\.zip$", writefs.HighFS); err != nil {
 		logger.Error().Msgf("cannot register zipfs", err)
 		return
 	}
-	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(), "", writefs.LowFS); err != nil {
+	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(logger), "", writefs.LowFS); err != nil {
 		logger.Error().Msgf("cannot register zipfs", err)
 		return
 	}
