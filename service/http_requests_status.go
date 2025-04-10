@@ -15,13 +15,31 @@ import (
 )
 
 const (
-	aliasAndSize     = "/storage-location/collection/"
-	status           = "/status/"
-	storageInfo      = "/object-instance/"
-	object           = "/object/"
-	ResultingQuality = "resulting-quality/"
-	NeededQuality    = "needed-quality/"
+	aliasAndSize       = "/storage-location/collection/"
+	status             = "/status/"
+	storageInfo        = "/object-instance/"
+	objectInstanceInfo = "/object-instance/signature-and-location/"
+	object             = "/object/"
+	ResultingQuality   = "resulting-quality/"
+	NeededQuality      = "needed-quality/"
 )
+
+func GetObjectInstancesBySignatureAndLocationsPathName(signature string, config configuration.Config) (*pb.ObjectInstance, error) {
+	objectInstance := &pb.ObjectInstance{}
+	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+objectInstanceInfo+signature+"/"+config.Storage.Name, nil)
+	if err != nil {
+		return objectInstance, err
+	}
+	body, err := sendRequest(req, config)
+	if err != nil {
+		return objectInstance, err
+	}
+	err = json.Unmarshal(body, &objectInstance)
+	if err != nil {
+		return objectInstance, err
+	}
+	return objectInstance, nil
+}
 
 func GetStorageLocationsStatusForCollectionAlias(alias string, size int64, config configuration.Config) (string, error) {
 	var status pb.Id

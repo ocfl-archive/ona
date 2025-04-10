@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/ocfl-archive/ona/configuration"
 	"time"
 )

@@ -205,7 +205,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 		nil,
 		nil,
 		nil,
-		logger)
+		logger,
+		"")
 	if err != nil {
 		logger.Error().Msgf("cannot instantiate extension factory", err)
 		return

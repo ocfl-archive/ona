@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	archiveerror "github.com/ocfl-archive/error/pkg/error"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
 )
@@ -31,7 +32,7 @@ func (g *Gocfl) ExtractMetadata(storageRootPath string) (models.Object, error) {
 	}()
 
 	ctx := ocfl.NewContextValidation(context.TODO())
-	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, g.extensionFactory, g.logger)
+	storageRoot, err := ocfl.LoadStorageRoot(ctx, ocflFS, g.extensionFactory, g.logger, archiveerror.NewFactory("ona"), "")
 	if err != nil {
 		return models.Object{}, err
 	}

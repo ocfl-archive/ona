@@ -1,6 +1,8 @@
 package service
 
 import (
+	"github.com/je4/filesystem/v3/pkg/vfsrw"
+	"github.com/je4/utils/v2/pkg/config"
 	"github.com/jinzhu/configor"
 	"github.com/ocfl-archive/ona/configuration"
 	"log"
@@ -32,5 +34,28 @@ func GetConfig(cfgFilePathRaw string) *configuration.Config {
 	if configObj.Log.Level == "" {
 		configObj.Log.Level = "INFO"
 	}
+	if configObj.Storage.Secret == "" {
+		configObj.Storage.Secret = os.Getenv("SECRET")
+	}
 	return &configObj
+}
+
+func LoadVfsConfig(cfg configuration.Config) (vfsrw.Config, error) {
+	vfsTemp := vfsrw.VFS{
+		Type: cfg.Storage.Type,
+		Name: cfg.Storage.Name,
+		S3: &vfsrw.S3{
+			AccessKeyID:     config.EnvString(cfg.Storage.Key),
+			SecretAccessKey: config.EnvString(cfg.Storage.Secret),
+			Endpoint:        config.EnvString(cfg.Storage.Url),
+			Region:          "us-east-1",
+			UseSSL:          true,
+			Debug:           cfg.Storage.Debug,
+			CAPEM:           cfg.Storage.CAPEM,
+		},
+	}
+
+	vfsMap := make(map[string]*vfsrw.VFS)
+	vfsMap[cfg.Storage.Name] = &vfsTemp
+	return vfsMap, nil
 }
