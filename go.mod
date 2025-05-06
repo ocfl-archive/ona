@@ -10,7 +10,8 @@ require (
 	github.com/je4/utils/v2 v2.0.59
 	github.com/jinzhu/configor v1.2.2
 	github.com/jwalton/go-supportscolor v1.2.0
-	github.com/ocfl-archive/dlza-manager v1.0.0-beta7
+	github.com/ocfl-archive/dlza-manager v1.0.0-beta9
+	github.com/ocfl-archive/error v1.0.5
 	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta8
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.9.1
@@ -99,7 +100,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	github.com/ocfl-archive/error v1.0.5 // indirect
 	github.com/ocfl-archive/indexer/v3 v3.0.17 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect

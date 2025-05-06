@@ -143,8 +143,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger.Error().Msgf(err.Error())
 		return
 	}
-	checksum := ""
-	if force {
+	checksum := "empty"
+	if force && jsonPathRow == "" {
 		targetFP := io.Discard
 		csWriter, err := checksumImp.NewChecksumWriter(
 			[]checksumImp.DigestAlgorithm{checksumType},
@@ -164,7 +164,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf("cannot get checksum", err)
 		}
 		checksum = checksums[checksumType]
-	} else {
+	} else if jsonPathRow == "" {
 		fileChecksum, err := os.ReadFile(filePathCleaned + "." + checksumType)
 		if err == nil {
 			checksum = strings.Split(string(fileChecksum), separator)[0]
@@ -173,16 +173,17 @@ func sendFile(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
+	if jsonPathRow == "" {
+		objects, err := service.GetObjectsByChecksum(checksum, *configObj)
+		if err != nil {
+			logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
+			return
+		}
 
-	objects, err := service.GetObjectsByChecksum(checksum, *configObj)
-	if err != nil {
-		logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
-		return
-	}
-
-	if len(objects.Objects) != 0 {
-		logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
-		return
+		if len(objects.Objects) != 0 {
+			logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
+			return
+		}
 	}
 
 	fsFactory, err := writefs.NewFactory()
@@ -226,8 +227,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf(err.Error())
 			return
 		}
-		object.Checksum = checksum
 		object.Size = objectSize
+		object.Binary = true
 		ObjectJsonRaw, err := json.Marshal(object)
 		if err != nil {
 			logger.Error().Msgf(err.Error())
@@ -239,6 +240,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		object, err = gocfl.ExtractMetadata(filePathCleaned)
 		object.Checksum = checksum
 		object.Size = objectSize
+		object.Binary = false
 		if err != nil {
 			logger.Error().Msgf("could not extract metadata for file: " + filePathCleaned)
 			return
@@ -252,25 +254,22 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
 	fileName := re.ReplaceAllString(object.Signature+extension, "_")
-
-	status, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, *configObj)
+	objectPb, err := service.GetObjectBySignature(object.Signature, *configObj)
+	if err != nil {
+		logger.Error().Msgf("could not GetObjectBySignature %s", err)
+		return
+	}
+	head := "v1"
+	if objectPb.Id != "" {
+		head = "v+"
+	}
+	status, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, object.Signature, head, *configObj)
 	if err != nil {
 		logger.Error().Msgf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
 		return
 	}
 	if status != "" {
 		logger.Error().Msgf(err.Error())
-		return
-	}
-
-	objectInstances, err := service.GetObjectInstancesByName(fileName, *configObj)
-	if err != nil {
-		logger.Error().Msgf("could not get objectInstances from database to check whether file name %s exists", fileName)
-		return
-	}
-
-	if len(objectInstances.ObjectInstances) != 0 {
-		logger.Error().Msgf("The file: %s you are trying to archive already exists in archive\n", fileName)
 		return
 	}
 

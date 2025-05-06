@@ -5,13 +5,13 @@ import (
 	"crypto/tls"
 	"emperror.dev/errors"
 	"encoding/json"
+	"fmt"
 	"github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/ocfl-archive/ona/configuration"
 	"github.com/ocfl-archive/ona/models"
 	"io"
 	"net/http"
-	"strconv"
 )
 
 const (
@@ -20,6 +20,7 @@ const (
 	storageInfo        = "/object-instance/"
 	objectInstanceInfo = "/object-instance/signature-and-location/"
 	object             = "/object/"
+	objectSignature    = "/object/signature/"
 	ResultingQuality   = "resulting-quality/"
 	NeededQuality      = "needed-quality/"
 )
@@ -40,10 +41,26 @@ func GetObjectInstancesBySignatureAndLocationsPathName(signature string, config 
 	}
 	return objectInstance, nil
 }
+func GetObjectBySignature(signature string, config configuration.Config) (*pb.Object, error) {
+	object := &pb.Object{}
+	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+objectSignature+signature, nil)
+	if err != nil {
+		return object, err
+	}
+	body, err := sendRequest(req, config)
+	if err != nil {
+		return object, err
+	}
+	err = json.Unmarshal(body, &object)
+	if err != nil {
+		return object, err
+	}
+	return object, nil
+}
 
-func GetStorageLocationsStatusForCollectionAlias(alias string, size int64, config configuration.Config) (string, error) {
+func GetStorageLocationsStatusForCollectionAlias(alias string, size int64, signature string, head string, config configuration.Config) (string, error) {
 	var status pb.Id
-	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+aliasAndSize+alias+"/"+strconv.FormatInt(size, 10), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s%s/%d/%s/%s", config.StatusUrl, aliasAndSize, alias, size, signature, head), nil)
 	if err != nil {
 		return "error", err
 	}

@@ -25,4 +25,5 @@ type Object struct {
 	Holding             string   `json:"holding"`
 	Authors             []string `json:"authors"`
 	Expiration          string   `json:"expiration"`
+	Binary              bool     `json:"binary"`
 }
