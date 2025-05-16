@@ -156,12 +156,12 @@ func sendFile(cmd *cobra.Command, args []string) {
 			return
 		}
 		if err := csWriter.Close(); err != nil {
-			logger.Error().Msgf("cannot close checksum writer", err)
+			logger.Error().Msgf("cannot close checksum writer %s", err)
 			return
 		}
 		checksums, err := csWriter.GetChecksums()
 		if err != nil {
-			logger.Error().Msgf("cannot get checksum", err)
+			logger.Error().Msgf("cannot get checksum %s", err)
 		}
 		checksum = checksums[checksumType]
 	} else if jsonPathRow == "" {
@@ -188,15 +188,15 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
-		logger.Error().Msgf("cannot create filesystem factory", err)
+		logger.Error().Msgf("cannot create filesystem factory %s", err)
 		return
 	}
 	if err := fsFactory.Register(zipfs.NewCreateFSFunc(logger), "\\.zip$", writefs.HighFS); err != nil {
-		logger.Error().Msgf("cannot register zipfs", err)
+		logger.Error().Msgf("cannot register zipfs %s", err)
 		return
 	}
 	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(logger), "", writefs.LowFS); err != nil {
-		logger.Error().Msgf("cannot register zipfs", err)
+		logger.Error().Msgf("cannot register zipfs %s", err)
 		return
 	}
 	extensionFactory, err := gocflCmd.InitExtensionFactory(map[string]string{},
@@ -209,7 +209,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger,
 		"")
 	if err != nil {
-		logger.Error().Msgf("cannot instantiate extension factory", err)
+		logger.Error().Msgf("cannot instantiate extension factory %s", err)
 		return
 	}
 
