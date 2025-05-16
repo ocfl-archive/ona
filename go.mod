@@ -12,7 +12,7 @@ require (
 	github.com/jwalton/go-supportscolor v1.2.0
 	github.com/ocfl-archive/dlza-manager v1.0.0-beta9
 	github.com/ocfl-archive/error v1.0.5
-	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta11
+	github.com/ocfl-archive/gocfl/v2 v2.0.6-beta12
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/spf13/cobra v1.9.1
 	gitlab.switch.ch/ub-unibas/go-ublogger/v2 v2.0.1
@@ -66,7 +66,6 @@ require (
 	github.com/google/certificate-transparency-go v1.3.1 // indirect
 	github.com/google/flatbuffers v25.2.10+incompatible // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/tink/go v1.7.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/handlers v1.5.2 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
