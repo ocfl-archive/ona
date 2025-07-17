@@ -10,7 +10,9 @@ import (
 	"github.com/je4/filesystem/v3/pkg/zipfs"
 	checksumImp "github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
+	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
+	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
 	"github.com/ocfl-archive/ona/service"
 	"github.com/schollz/progressbar/v3"
@@ -214,7 +216,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 
 	objectJson := ""
+	filesJson := ""
+	_ = filesJson
 	object := models.Object{}
+	var files []*pb.File
+	objectOcfl := ocfl.StorageRootMetadata{}
 	if jsonPathRow != "" {
 		jsonPathCleaned := filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
@@ -222,10 +228,30 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf("could not open json file: " + jsonPathCleaned)
 			return
 		}
-		err = json.Unmarshal(jsonObject, &object)
+		err = json.Unmarshal(jsonObject, &objectOcfl)
 		if err != nil {
 			logger.Error().Msgf(err.Error())
 			return
+		}
+		if objectOcfl.Objects != nil {
+			object, err = service.GetObjectFromGocflObject(&objectOcfl)
+			if err != nil {
+				logger.Error().Msgf(err.Error())
+				return
+			}
+			files = service.GetFilesFromGocflObject(&objectOcfl)
+			filesJsonRaw, err := json.Marshal(files)
+			if err != nil {
+				logger.Error().Msgf(err.Error())
+				return
+			}
+			filesJson = string(filesJsonRaw)
+		} else {
+			err = json.Unmarshal(jsonObject, &object)
+			if err != nil {
+				logger.Error().Msgf(err.Error())
+				return
+			}
 		}
 		object.Size = objectSize
 		object.Binary = true
