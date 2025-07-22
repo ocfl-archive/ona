@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,6 +33,7 @@ import (
 const (
 	initialCopying = "initial copying"
 	archived       = "archived"
+	errorStatus    = "error"
 	checksumType   = "sha512"
 	separator      = " *"
 )
@@ -123,10 +125,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 		return
 	}
 	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRaw))
-	extension := filepath.Ext(filePathCleaned)
 
 	file, err := os.Open(filePathCleaned)
-
 	if err != nil {
 		logger.Error().Msgf("could not open file: " + filePathRaw)
 		return
@@ -216,13 +216,15 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 
 	objectJson := ""
+	jsonPathCleaned := ""
 	filesJson := ""
 	_ = filesJson
+	sendTwoFiles := false
 	object := models.Object{}
 	var files []*pb.File
 	objectOcfl := ocfl.StorageRootMetadata{}
 	if jsonPathRow != "" {
-		jsonPathCleaned := filepath.ToSlash(filepath.Clean(jsonPathRow))
+		jsonPathCleaned = filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
 		if err != nil {
 			logger.Error().Msgf("could not open json file: " + jsonPathCleaned)
@@ -246,6 +248,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 				return
 			}
 			filesJson = string(filesJsonRaw)
+			sendTwoFiles = true
 		} else {
 			err = json.Unmarshal(jsonObject, &object)
 			if err != nil {
@@ -278,8 +281,21 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 		objectJson = string(ObjectJsonRaw)
 	}
+	var uploads []*os.File
+	if sendTwoFiles && jsonPathCleaned != "" {
+		jsonFile, err := os.Open(jsonPathCleaned)
+		if err != nil {
+			logger.Error().Msgf("could not open file: " + jsonPathCleaned)
+			return
+		}
+		defer jsonFile.Close()
+		if jsonFile != nil {
+			uploads = append(uploads, jsonFile)
+		}
+	}
+	uploads = append(uploads, file)
+
 	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
-	fileName := re.ReplaceAllString(object.Signature+extension, "_")
 	objectPb, err := service.GetObjectBySignature(object.Signature, *configObj)
 	if err != nil {
 		logger.Error().Msgf("could not GetObjectBySignature %s", err)
@@ -319,60 +335,74 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	httpClient := &http.Client{Transport: customTransport}
 
-	// create the tus client.
-	url := configObj.Url
-	client, err := tus.NewClient(url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-		"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}}, HttpClient: httpClient})
-	if err != nil {
-		logger.Error().Msgf("could not create client for: " + url)
-		return
-	}
-
-	// create an upload from a file.
-	upload, err := tus.NewUploadFromFile(file)
-	if err != nil {
-		logger.Error().Msgf("could not upload file: " + filePathCleaned)
-		return
-	}
-	// create the uploader.
-	uploader, err := client.CreateUpload(upload)
-	if err != nil {
-		logger.Error().Msgf("could not create upload for file: " + filePathCleaned + ", with err: " + err.Error())
-		return
-	}
-
-	if !quiet {
-		// start the uploading process.
-		go func() {
-			uploader.Upload()
-		}()
-		fmt.Println("Copy...")
-		bar := progressbar.NewOptions64(
-			upload.Size(),
-			progressbar.OptionSetDescription(""),
-			progressbar.OptionSetWriter(os.Stdout),
-			progressbar.OptionSetWidth(10),
-			progressbar.OptionThrottle(65*time.Millisecond),
-			progressbar.OptionOnCompletion(func() {
-				fmt.Fprint(os.Stdout, "\nUpload to temporary location is finished. Upload Id: "+archivedStatus.Id+" \n")
-			}),
-			progressbar.OptionSpinnerType(14),
-			progressbar.OptionFullWidth(),
-			progressbar.OptionSetRenderBlankState(true),
-		)
-
-		size := upload.Size()
-		for {
-			if upload.Finished() {
-				bar.Set(int(size))
-				break
-			}
-			offset := upload.Offset()
-			bar.Set(int(offset))
+	for index, tusUpload := range uploads {
+		path := ""
+		severalObjects := ""
+		if len(uploads) > 1 {
+			severalObjects = strconv.Itoa(index)
 		}
-	} else {
-		uploader.Upload()
+		if len(uploads) > 1 && index == 0 {
+			path = jsonPathCleaned
+		} else {
+			path = filePathCleaned
+		}
+		extension := filepath.Ext(path)
+		fileName := re.ReplaceAllString(object.Signature+extension, "_")
+		// create the tus client.
+		client, err := tus.NewClient(configObj.Url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
+			"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
+		if err != nil {
+			logger.Error().Msgf("could not create client for: " + configObj.Url)
+			return
+		}
+
+		// create an upload from a file.
+		upload, err := tus.NewUploadFromFile(tusUpload)
+		if err != nil {
+			logger.Error().Msgf("could not upload file: " + path)
+			return
+		}
+		// create the uploader.
+		uploader, err := client.CreateUpload(upload)
+		if err != nil {
+			logger.Error().Msgf("could not create upload for file: " + path + ", with err: " + err.Error())
+			return
+		}
+
+		if !quiet {
+			// start the uploading process.
+			go func() {
+				uploader.Upload()
+			}()
+			fmt.Println("Copy...")
+			bar := progressbar.NewOptions64(
+				upload.Size(),
+				progressbar.OptionSetDescription(""),
+				progressbar.OptionSetWriter(os.Stdout),
+				progressbar.OptionSetWidth(10),
+				progressbar.OptionThrottle(65*time.Millisecond),
+				progressbar.OptionOnCompletion(func() {
+					fmt.Fprint(os.Stdout, "\nUpload to temporary location is finished. Upload Id: "+archivedStatus.Id+" \n")
+				}),
+				progressbar.OptionSpinnerType(14),
+				progressbar.OptionFullWidth(),
+				progressbar.OptionSetRenderBlankState(true),
+			)
+
+			size := upload.Size()
+			for {
+				if upload.Finished() {
+					bar.Set(int(size))
+					break
+				}
+				offset := upload.Offset()
+				bar.Set(int(offset))
+			}
+		} else {
+			uploader.Upload()
+		}
 	}
+
 	if wait {
 		for {
 			archivedStatusW, err := service.GetStatus(archivedStatus.Id, *configObj)
@@ -380,9 +410,10 @@ func sendFile(cmd *cobra.Command, args []string) {
 				logger.Error().Msgf("could not get initial status with Id: " + archivedStatus.Id)
 				return
 			}
-			if archivedStatusW.Status != archived {
+			if archivedStatusW.Status != archived && archivedStatusW.Status != errorStatus {
 				time.Sleep(10 * time.Second)
 			} else {
+				fmt.Printf("Status of upload: %s", archivedStatusW.Status)
 				break
 			}
 		}
