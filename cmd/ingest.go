@@ -10,7 +10,6 @@ import (
 	"github.com/je4/filesystem/v3/pkg/zipfs"
 	checksumImp "github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
@@ -145,8 +144,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger.Error().Msgf(err.Error())
 		return
 	}
-	checksum := "empty"
-	if force && jsonPathRow == "" {
+	checksum := ""
+	if force {
 		targetFP := io.Discard
 		csWriter, err := checksumImp.NewChecksumWriter(
 			[]checksumImp.DigestAlgorithm{checksumType},
@@ -166,7 +165,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf("cannot get checksum %s", err)
 		}
 		checksum = checksums[checksumType]
-	} else if jsonPathRow == "" {
+	} else {
 		fileChecksum, err := os.ReadFile(filePathCleaned + "." + checksumType)
 		if err == nil {
 			checksum = strings.Split(string(fileChecksum), separator)[0]
@@ -175,17 +174,16 @@ func sendFile(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
-	if jsonPathRow == "" {
-		objects, err := service.GetObjectsByChecksum(checksum, *configObj)
-		if err != nil {
-			logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
-			return
-		}
 
-		if len(objects.Objects) != 0 {
-			logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
-			return
-		}
+	objects, err := service.GetObjectsByChecksum(checksum, *configObj)
+	if err != nil {
+		logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
+		return
+	}
+
+	if len(objects.Objects) != 0 {
+		logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
+		return
 	}
 
 	fsFactory, err := writefs.NewFactory()
@@ -217,11 +215,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	objectJson := ""
 	jsonPathCleaned := ""
-	filesJson := ""
-	_ = filesJson
 	sendTwoFiles := false
 	object := models.Object{}
-	var files []*pb.File
 	objectOcfl := ocfl.StorageRootMetadata{}
 	if jsonPathRow != "" {
 		jsonPathCleaned = filepath.ToSlash(filepath.Clean(jsonPathRow))
@@ -241,13 +236,6 @@ func sendFile(cmd *cobra.Command, args []string) {
 				logger.Error().Msgf(err.Error())
 				return
 			}
-			files = service.GetFilesFromGocflObject(&objectOcfl)
-			filesJsonRaw, err := json.Marshal(files)
-			if err != nil {
-				logger.Error().Msgf(err.Error())
-				return
-			}
-			filesJson = string(filesJsonRaw)
 			sendTwoFiles = true
 		} else {
 			err = json.Unmarshal(jsonObject, &object)

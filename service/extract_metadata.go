@@ -5,7 +5,6 @@ import (
 	"emperror.dev/errors"
 	"github.com/je4/filesystem/v3/pkg/writefs"
 	"github.com/je4/utils/v2/pkg/zLogger"
-	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	archiveerror "github.com/ocfl-archive/error/pkg/error"
 	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
 	"github.com/ocfl-archive/ona/models"
@@ -115,49 +114,4 @@ func GetObjectFromGocflObject(metadata *ocfl.StorageRootMetadata) (models.Object
 	object.User = objectJson["user"].(string)
 
 	return object, nil
-}
-
-func GetFilesFromGocflObject(metadata *ocfl.StorageRootMetadata) []*pb.File {
-	object := &ocfl.ObjectMetadata{}
-	for _, mapItem := range metadata.Objects {
-		object = mapItem
-	}
-	filesRetrieved := object.Files
-	head := object.Head
-
-	files := make([]*pb.File, 0)
-	for _, fileRetr := range filesRetrieved {
-		file := pb.File{}
-		file.Name = fileRetr.VersionName[head]
-
-		if fileRetr.Extension["NNNN-indexer"] != nil {
-			extensions := fileRetr.Extension["NNNN-indexer"].(map[string]any)
-
-			file.Pronom = extensions["pronom"].(string)
-			if file.Pronom == "" {
-				file.Pronom = defaultPronom
-			}
-			if extensions["size"] != nil {
-				file.Size = int64(extensions["size"].(float64))
-			}
-			if extensions["duration"] != nil {
-				file.Duration = int64(extensions["duration"].(float64))
-			}
-			if extensions["width"] != nil {
-				file.Width = int64(extensions["width"].(float64))
-			}
-			if extensions["height"] != nil {
-				file.Height = int64(extensions["height"].(float64))
-			}
-			file.MimeType = extensions["mimetype"].(string)
-			if file.MimeType == "" {
-				file.MimeType = defaultMimeType
-			}
-		} else {
-			file.MimeType = defaultMimeType
-			file.Pronom = defaultPronom
-		}
-		files = append(files, &file)
-	}
-	return files
 }
