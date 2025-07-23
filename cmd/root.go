@@ -21,7 +21,7 @@ needed variables should be provided after "config" or short "-c"
 
 Example:
 
-ingest -w -p C:\Users\zhb_e-manuscripta-2zip -c C:\Users\config.yml`,
+ingest -p C:\Users\zhb_e-manuscripta-2zip -c C:\Users\config.yml`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },

@@ -59,12 +59,12 @@ func init() {
 	generateCmd.Flags().StringP("json", "j", "", "Path to json file")
 	generateCmd.Flags().StringP("path", "p", "", "Path to file")
 	generateCmd.Flags().BoolP("quiet", "q", false, "The process information should not be showed")
-	generateCmd.Flags().BoolP("wait", "w", false, "Wait until the order is finished")
+	generateCmd.Flags().BoolP("background", "b", false, "Do not wait until the order is finished")
 	generateCmd.Flags().BoolP("force", "f", false, "Force to archive and retrieve checksum during the process")
 }
 
 func sendFile(cmd *cobra.Command, args []string) {
-	wait, err := cmd.Flags().GetBool("wait")
+	background, err := cmd.Flags().GetBool("background")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -403,7 +403,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if wait {
+	if !background {
 		for {
 			archivedStatusW, err := service.GetStatus(archivedStatus.Id, *configObj)
 			if err != nil {
