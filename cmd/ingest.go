@@ -244,6 +244,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 				return
 			}
 		}
+		object.Checksum = checksum
 		object.Size = objectSize
 		object.Binary = true
 		ObjectJsonRaw, err := json.Marshal(object)
@@ -362,7 +363,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			go func() {
 				uploader.Upload()
 			}()
-			fmt.Println("Copy...")
+			fmt.Println("Upload...")
 			bar := progressbar.NewOptions64(
 				upload.Size(),
 				progressbar.OptionSetDescription(""),
