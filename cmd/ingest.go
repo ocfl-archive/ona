@@ -244,32 +244,18 @@ func sendFile(cmd *cobra.Command, args []string) {
 				return
 			}
 		}
-		object.Checksum = checksum
-		object.Size = objectSize
 		object.Binary = true
-		ObjectJsonRaw, err := json.Marshal(object)
-		if err != nil {
-			logger.Error().Msgf(err.Error())
-			return
-		}
-		objectJson = string(ObjectJsonRaw)
 	} else {
 		gocfl := service.NewGocfl(extensionFactory, fsFactory, logger)
 		object, err = gocfl.ExtractMetadata(filePathCleaned)
-		object.Checksum = checksum
-		object.Size = objectSize
 		object.Binary = false
 		if err != nil {
 			logger.Error().Msgf("could not extract metadata for file: " + filePathCleaned)
 			return
 		}
-		ObjectJsonRaw, err := json.Marshal(object)
-		if err != nil {
-			logger.Error().Msgf(err.Error())
-			return
-		}
-		objectJson = string(ObjectJsonRaw)
 	}
+	object.Checksum = checksum
+	object.Size = objectSize
 	var uploads []*os.File
 	if sendTwoFiles && jsonPathCleaned != "" {
 		jsonFile, err := os.Open(jsonPathCleaned)
@@ -290,9 +276,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger.Error().Msgf("could not GetObjectBySignature %s", err)
 		return
 	}
+
 	head := "v1"
 	if objectPb.Id != "" {
 		head = "v+"
+		object.Id = objectPb.Id
 	}
 	status, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, object.Signature, head, *configObj)
 	if err != nil {
@@ -309,7 +297,12 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger.Error().Msgf("could not create initial status")
 		return
 	}
-
+	ObjectJsonRaw, err := json.Marshal(object)
+	if err != nil {
+		logger.Error().Msgf(err.Error())
+		return
+	}
+	objectJson = string(ObjectJsonRaw)
 	defaultTransport := http.DefaultTransport.(*http.Transport)
 
 	// Create new Transport that ignores self-signed SSL
