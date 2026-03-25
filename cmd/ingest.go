@@ -4,6 +4,20 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/eventials/go-tus"
+	"github.com/je4/filesystem/v3/pkg/osfsrw"
+	"github.com/je4/filesystem/v3/pkg/writefs"
+	"github.com/je4/filesystem/v3/pkg/zipfs"
+	checksumImp "github.com/je4/utils/v2/pkg/checksum"
+	"github.com/je4/utils/v2/pkg/zLogger"
+	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
+	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
+	"github.com/ocfl-archive/ona/models"
+	"github.com/ocfl-archive/ona/service"
+	"github.com/schollz/progressbar/v3"
+	"github.com/spf13/cobra"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"io"
 	"log"
 	"net/http"
@@ -13,22 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/eventials/go-tus"
-	"github.com/je4/filesystem/v3/pkg/osfsrw"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/filesystem/v3/pkg/zipfs"
-	checksumImp "github.com/je4/utils/v2/pkg/checksum"
-	"github.com/je4/utils/v2/pkg/zLogger"
-	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
-	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
-	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
-	"github.com/ocfl-archive/ona/models"
-	"github.com/ocfl-archive/ona/service"
-	"github.com/schollz/progressbar/v3"
-	"github.com/spf13/cobra"
-	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
-	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 )
 
 const (
@@ -177,6 +175,17 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	objects, err := service.GetObjectsByChecksum(checksum, *configObj)
+	if err != nil {
+		logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
+		return
+	}
+
+	if len(objects.Objects) != 0 {
+		logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
+		return
+	}
+
 	fsFactory, err := writefs.NewFactory()
 	if err != nil {
 		logger.Error().Msgf("cannot create filesystem factory %s", err)
@@ -239,11 +248,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 	} else {
 		gocfl := service.NewGocfl(extensionFactory, fsFactory, logger)
 		object, err = gocfl.ExtractMetadata(filePathCleaned)
+		object.Binary = false
 		if err != nil {
 			logger.Error().Msgf("could not extract metadata for file: " + filePathCleaned)
 			return
 		}
-		object.Binary = false
 	}
 	object.Checksum = checksum
 	object.Size = objectSize
@@ -270,34 +279,16 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	head := "v1"
 	if objectPb.Id != "" {
-		objectInstancePb, err := service.CheckRawObjectInstanceByObjectId(objectPb.Id, *configObj)
-		if err != nil {
-			logger.Error().Msgf("could not GetObjectBySignature %s", err)
-			return
-		}
-		if objectInstancePb.Id == "" {
-			objects, err := service.GetObjectsByChecksum(checksum, *configObj)
-			if err != nil {
-				logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
-				return
-			}
-			if len(objects.Objects) != 0 {
-				logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
-				return
-			}
-			head = "v+"
-		}
+		head = "v+"
 		object.Id = objectPb.Id
 	}
-	//checking whether needed amount of locations is available, if yes, delivering partitionId of first location to copy in
-	partitionId, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, object.Signature, head, *configObj)
+	status, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, object.Signature, head, *configObj)
 	if err != nil {
 		logger.Error().Msgf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
 		return
 	}
-	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
-	if !r.MatchString(partitionId) {
-		logger.Error().Msgf("could not get StoragePartition for collection with alias %s", object.Collection)
+	if status != "" {
+		logger.Error().Msgf(err.Error())
 		return
 	}
 
@@ -341,7 +332,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		fileName := re.ReplaceAllString(object.Signature+extension, "_")
 		// create the tus client.
 		client, err := tus.NewClient(configObj.Url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-			"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
+			"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
 		if err != nil {
 			logger.Error().Msgf("could not create client for: " + configObj.Url)
 			return
@@ -358,43 +349,6 @@ func sendFile(cmd *cobra.Command, args []string) {
 		if err != nil {
 			logger.Error().Msgf("could not create upload for file: " + path + ", with err: " + err.Error())
 			return
-		}
-		if object.Id == "" {
-			objectWithInfo := &pb.ObjectAndFile{}
-			objectPbF := &pb.Object{}
-			//statusId field is used to transfer partition id
-			objectWithInfo.StatusId = partitionId
-			objectWithInfo.FileName = fileName
-
-			objectPbF.Size = object.Size
-			objectPbF.Signature = object.Signature
-			objectPbF.CollectionId = object.CollectionId
-			objectPbF.Collection = object.Collection
-			objectPbF.Binary = object.Binary
-			objectPbF.Address = object.Address
-			objectPbF.AlternativeTitles = object.AlternativeTitles
-			objectPbF.Checksum = object.Checksum
-			objectPbF.Authors = object.Authors
-			objectPbF.Description = object.Description
-			objectPbF.Keywords = object.Keywords
-			objectPbF.Created = object.Created
-			objectPbF.Expiration = object.Expiration
-			objectPbF.Head = head
-			objectPbF.Holding = object.Holding
-			objectPbF.Identifiers = object.Identifiers
-			objectPbF.IngestWorkflow = object.IngestWorkflow
-			objectPbF.LastChanged = object.LastChanged
-			objectPbF.References = object.References
-			objectPbF.Sets = object.Sets
-			objectPbF.Title = object.Title
-			objectPbF.User = object.User
-			objectWithInfo.Object = objectPbF
-
-			err = service.CreateObjectAndInstance(objectWithInfo, *configObj)
-			if err != nil {
-				logger.Error().Msgf(err.Error())
-				return
-			}
 		}
 
 		if !quiet {
