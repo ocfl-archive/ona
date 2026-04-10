@@ -3,26 +3,29 @@ package service
 import (
 	"bytes"
 	"crypto/tls"
-	"emperror.dev/errors"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
+	"emperror.dev/errors"
 	"github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
 	"github.com/ocfl-archive/ona/configuration"
 	"github.com/ocfl-archive/ona/models"
-	"io"
-	"net/http"
 )
 
 const (
-	aliasAndSize       = "/storage-location/collection/"
-	status             = "/status/"
-	storageInfo        = "/object-instance/"
-	objectInstanceInfo = "/object-instance/signature-and-location/"
-	object             = "/object/"
-	objectSignature    = "/object/signature/"
-	ResultingQuality   = "resulting-quality/"
-	NeededQuality      = "needed-quality/"
+	aliasAndSize            = "/storage-location/collection/"
+	status                  = "/status/"
+	storageInfo             = "/object-instance/"
+	objectInstanceInfo      = "/object-instance/signature-and-location/"
+	objectInstanceRawCheck  = "/object-instance/raw-check/"
+	object                  = "/object/"
+	objectSignature         = "/object/signature/"
+	ResultingQuality        = "resulting-quality/"
+	NeededQuality           = "needed-quality/"
+	createObjectAndInstance = "/object/create/"
 )
 
 func GetObjectInstancesBySignatureAndLocationsPathName(signature string, config configuration.Config) (*pb.ObjectInstance, error) {
@@ -41,6 +44,23 @@ func GetObjectInstancesBySignatureAndLocationsPathName(signature string, config 
 	}
 	return objectInstance, nil
 }
+func CheckRawObjectInstanceByObjectId(objectId string, config configuration.Config) (*pb.ObjectInstance, error) {
+	objectInstance := &pb.ObjectInstance{}
+	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+objectInstanceRawCheck+objectId, nil)
+	if err != nil {
+		return objectInstance, err
+	}
+	body, err := sendRequest(req, config)
+	if err != nil {
+		return objectInstance, err
+	}
+	err = json.Unmarshal(body, &objectInstance)
+	if err != nil {
+		return objectInstance, err
+	}
+	return objectInstance, nil
+}
+
 func GetObjectBySignature(signature string, config configuration.Config) (*pb.Object, error) {
 	object := &pb.Object{}
 	req, err := http.NewRequest(http.MethodGet, config.StatusUrl+objectSignature+signature, nil)
@@ -141,6 +161,23 @@ func GetObjectsByChecksum(checksum string, config configuration.Config) (*dlzama
 		return objects, err
 	}
 	return objects, nil
+}
+
+func CreateObjectAndInstance(objectAndInstance *pb.ObjectAndFile, config configuration.Config) error {
+	buf := bytes.Buffer{}
+	err := json.NewEncoder(&buf).Encode(objectAndInstance)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPost, config.StatusUrl+createObjectAndInstance, &buf)
+	if err != nil {
+		return err
+	}
+	_, err = sendRequest(req, config)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func CreateStatus(statusObj models.ArchivingStatus, config configuration.Config) (models.ArchivingStatus, error) {
