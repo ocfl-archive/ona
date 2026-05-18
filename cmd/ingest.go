@@ -264,7 +264,6 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	uploads = append(uploads, file)
 
-	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
 	objectPb, err := service.GetObjectBySignature(object.Signature, *configObj)
 	if err != nil {
 		logger.Error().Msgf("could not GetObjectBySignature %s", err)
@@ -328,7 +327,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
 	httpClient := &http.Client{Transport: customTransport}
-
+	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
 	for index, tusUpload := range uploads {
 		path := ""
 		severalObjects := ""
@@ -340,11 +339,10 @@ func sendFile(cmd *cobra.Command, args []string) {
 		} else {
 			path = filePathCleaned
 		}
-		extension := filepath.Ext(path)
-		fileName := re.ReplaceAllString(object.Signature+extension, "_")
+
 		// create the tus client.
 		client, err := tus.NewClient(configObj.Url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-			"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {fileName}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
+			"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {getFileName(path, object.Signature, re)}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
 		if err != nil {
 			logger.Error().Msgf("could not create client for: " + configObj.Url)
 			return
@@ -367,7 +365,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			objectPbF := &pb.Object{}
 			//statusId field is used to transfer partition id
 			objectWithInfo.StatusId = partitionId
-			objectWithInfo.FileName = fileName
+			objectWithInfo.FileName = getFileName(filePathCleaned, object.Signature, re)
 
 			objectPbF.Size = object.Size
 			objectPbF.Signature = object.Signature
@@ -392,6 +390,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 			objectPbF.Title = object.Title
 			objectPbF.User = object.User
 			objectWithInfo.Object = objectPbF
+			object.Id = "exists"
 
 			err = service.CreateObjectAndInstance(objectWithInfo, *configObj)
 			if err != nil {
@@ -450,4 +449,10 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 
 	}
+}
+
+func getFileName(path string, signature string, re *regexp.Regexp) string {
+	extension := filepath.Ext(path)
+	fileName := re.ReplaceAllString(signature+extension, "_")
+	return fileName
 }
