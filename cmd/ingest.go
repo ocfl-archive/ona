@@ -208,7 +208,8 @@ func sendFile(cmd *cobra.Command, args []string) {
 	jsonPathCleaned := ""
 	sendTwoFiles := false
 	object := models.Object{}
-	objectOcfl := ocfl.StorageRootMetadata{}
+	//objectOcfl := ocfl.StorageRootMetadata{}
+	objectOcfl := ocfl.ObjectMetadata{}
 	if jsonPathRow != "" {
 		jsonPathCleaned = filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
@@ -221,8 +222,10 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf(err.Error())
 			return
 		}
-		if objectOcfl.Objects != nil {
-			object, err = service.GetObjectFromGocflObject(&objectOcfl)
+		//if objectOcfl.Objects != nil {
+		if objectOcfl.ID != "" {
+			//object, err = service.GetObjectFromGocflObject(&objectOcfl)
+			object, err = service.GetObjectFromGocflObjectT(&objectOcfl)
 			if err != nil {
 				logger.Error().Msgf(err.Error())
 				return
