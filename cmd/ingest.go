@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -14,21 +16,24 @@ import (
 	"strings"
 	"time"
 
+	"emperror.dev/errors"
 	"github.com/eventials/go-tus"
-	"github.com/je4/filesystem/v3/pkg/osfsrw"
-	"github.com/je4/filesystem/v3/pkg/writefs"
-	"github.com/je4/filesystem/v3/pkg/zipfs"
 	checksumImp "github.com/je4/utils/v2/pkg/checksum"
 	"github.com/je4/utils/v2/pkg/zLogger"
 	pb "github.com/ocfl-archive/dlza-manager/dlzamanagerproto"
-	gocflCmd "github.com/ocfl-archive/gocfl/v2/gocfl/cmd"
-	"github.com/ocfl-archive/gocfl/v2/pkg/ocfl"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
+	"github.com/ocfl-archive/filesystem/pkg/writefs"
+	"github.com/ocfl-archive/filesystem/pkg/zipfs"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/inventory"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/ocflerrors"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/util"
+	"github.com/ocfl-archive/gocfl/v3/pkg/ocfl/version"
 	"github.com/ocfl-archive/ona/models"
 	"github.com/ocfl-archive/ona/service"
+	"github.com/rs/zerolog"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
-	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
-	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 )
 
 const (
@@ -75,39 +80,14 @@ func sendFile(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		return
 	}
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatalf("cannot get hostname: %v", err)
-	}
+
 	configObj := service.GetConfig(cfgFilePath)
-	var loggerTLSConfig *tls.Config
-	var loggerLoader io.Closer
-	if configObj.Log.Stash.TLS != nil {
-		loggerTLSConfig, loggerLoader, err = loader.CreateClientLoader(configObj.Log.Stash.TLS, nil)
-		if err != nil {
-			log.Fatalf("cannot create client loader: %v", err)
-		}
-		defer loggerLoader.Close()
-	}
-	_logger, _logstash, _logfile, err := ublogger.CreateUbMultiLoggerTLS(configObj.Log.Level, configObj.Log.File,
-		ublogger.SetDataset(configObj.Log.Stash.Dataset),
-		ublogger.SetLogStash(configObj.Log.Stash.LogstashHost, configObj.Log.Stash.LogstashPort, configObj.Log.Stash.Namespace, configObj.Log.Stash.LogstashTraceLevel),
-		ublogger.SetTLS(configObj.Log.Stash.TLS != nil),
-		ublogger.SetTLSConfig(loggerTLSConfig),
-	)
-
-	if err != nil {
-		log.Fatalf("cannot create logger: %v", err)
-	}
-
-	l2 := _logger.With().Timestamp().Str("host", hostname).Logger() //.Output(output)
-	var logger zLogger.ZLogger = &l2
-	if _logstash != nil {
-		defer _logstash.Close()
-	}
-	if _logfile != nil {
-		defer _logfile.Close()
-	}
+	ctx := context.Background()
+	out := zerolog.ConsoleWriter{Out: os.Stderr}
+	zlogger := zerolog.New(out).
+		Level(zerolog.ErrorLevel)
+	var _zlogger zLogger.ZLogger = &zlogger
+	logger := ocfl.NewOCFLLogger(ctx, &zlogger, nil, version.Version1_1, nil)
 
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
@@ -177,39 +157,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	fsFactory, err := writefs.NewFactory()
-	if err != nil {
-		logger.Error().Msgf("cannot create filesystem factory %s", err)
-		return
-	}
-	if err := fsFactory.Register(zipfs.NewCreateFSFunc(logger), "\\.zip$", writefs.HighFS); err != nil {
-		logger.Error().Msgf("cannot register zipfs %s", err)
-		return
-	}
-	if err := fsFactory.Register(osfsrw.NewCreateFSFunc(logger), "", writefs.LowFS); err != nil {
-		logger.Error().Msgf("cannot register zipfs %s", err)
-		return
-	}
-	extensionFactory, err := gocflCmd.InitExtensionFactory(map[string]string{},
-		"",
-		false,
-		nil,
-		nil,
-		nil,
-		nil,
-		logger,
-		"")
-	if err != nil {
-		logger.Error().Msgf("cannot instantiate extension factory %s", err)
-		return
-	}
-
 	objectJson := ""
 	jsonPathCleaned := ""
 	sendTwoFiles := false
-	object := models.Object{}
-	//objectOcfl := ocfl.StorageRootMetadata{}
-	objectOcfl := ocfl.ObjectMetadata{}
+	obj := models.Object{}
+	var objectOcfl inventory.Metadata
 	if jsonPathRow != "" {
 		jsonPathCleaned = filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
@@ -222,34 +174,112 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf(err.Error())
 			return
 		}
-		//if objectOcfl.Objects != nil {
+
 		if objectOcfl.ID != "" {
-			//object, err = service.GetObjectFromGocflObject(&objectOcfl)
-			object, err = service.GetObjectFromGocflObjectT(&objectOcfl)
+			obj, err = service.GetObjectFromGocflObjectT(&objectOcfl)
 			if err != nil {
 				logger.Error().Msgf(err.Error())
 				return
 			}
 			sendTwoFiles = true
 		} else {
-			err = json.Unmarshal(jsonObject, &object)
+			err = json.Unmarshal(jsonObject, &obj)
 			if err != nil {
 				logger.Error().Msgf(err.Error())
 				return
 			}
 		}
-		object.Binary = true
+		obj.Binary = true
 	} else {
-		gocfl := service.NewGocfl(extensionFactory, fsFactory, logger)
-		object, err = gocfl.ExtractMetadata(filePathCleaned)
+
+		cfg := vfsrw.Config{}
+		vfs, err := vfsrw.NewFS(cfg, _zlogger)
 		if err != nil {
-			logger.Error().Msgf("could not extract metadata for file: " + filePathCleaned)
+			log.Fatalf("failed to create vfs: %v", err)
+		}
+		defer vfs.Close()
+
+		if err := vfsrw.AddLocal(vfs, nil); err != nil {
+			logger.Fatal().Err(err).Msg("failed to add local filesystem")
+		}
+
+		ocflPath := writefs.RealPath(vfs, filePathCleaned)
+		var destFS fs.FS
+		if strings.HasSuffix(strings.ToLower(ocflPath), ".zip") {
+			var err error
+			destFS, err = zipfs.NewFSFile(vfs, ocflPath, logger.Logger())
+			if err != nil {
+				logger.Error().Err(err).Msgf("cannot open zip filesystem for '%s'", ocflPath)
+				return
+			}
+		} else {
+			// Prepare access to the OCFL directory
+			var err error
+			destFS, err = writefs.Sub(vfs, ocflPath)
+			if err != nil {
+				logger.Error().Err(err).Msgf("cannot get filesystem for '%s'", ocflPath)
+				return
+			}
+		}
+		defer func() {
+			if err := writefs.Close(destFS); err != nil {
+				logger.Error().Err(err).Msgf("cannot close filesystem for '%s'", ocflPath)
+			}
+		}()
+		objFsys := destFS
+		_, err = util.GetStorageRootVersion(destFS)
+		if err != nil && !errors.Is(err, ocflerrors.ErrVersionNone) {
+			logger.Error().Err(err).Msgf("cannot get storage root version for '%s'", ocflPath)
+			return
+		} else if err == nil {
+
+			fis, err := fs.ReadDir(destFS, ".")
+			if err != nil {
+				logger.Error().Err(err).Msgf("cannot read directory for '%s'", ocflPath)
+				return
+			}
+			var objF string
+			for _, fi := range fis {
+				if fi.IsDir() && fi.Name() != "extensions" {
+					objF = fi.Name()
+					break
+				}
+			}
+			if objF == "" {
+				logger.Error().Msgf("cannot find OCFL object directory for '%s'", ocflPath)
+				return
+			}
+
+			objFsys, err = writefs.Sub(destFS, objF)
+			if err != nil {
+				logger.Error().Err(err).Msgf("cannot open filesystem for '%s'", filePathCleaned)
+				return
+			}
+		}
+
+		objLoaded, err := ocfl.LoadObject(ctx, objFsys, nil, logger)
+		if err != nil {
+			logger.Error().Msgf("failed to load object '%s' at '%s': %v", filePathCleaned, ocflPath, err)
 			return
 		}
-		object.Binary = false
+		defer objLoaded.Close()
+
+		extractor := objLoaded.GetExtractor()
+		defer func() { _ = extractor.Close() }()
+		metadata, err := extractor.GetMetadata()
+		if err != nil {
+			logger.Error().Msgf("failed to get metadata for object '%s': %v", filePathCleaned, err)
+			return
+		}
+		obj, err = service.GetObjectFromGocflObjectT(metadata)
+		if err != nil {
+			logger.Error().Msgf("failed to convert metadata to object for '%s': %v", filePathCleaned, err)
+			return
+		}
+		obj.Binary = false
 	}
-	object.Checksum = checksum
-	object.Size = objectSize
+	obj.Checksum = checksum
+	obj.Size = objectSize
 	var uploads []*os.File
 	if sendTwoFiles && jsonPathCleaned != "" {
 		jsonFile, err := os.Open(jsonPathCleaned)
@@ -264,7 +294,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 	}
 	uploads = append(uploads, file)
 
-	objectPb, err := service.GetObjectBySignature(object.Signature, *configObj)
+	objectPb, err := service.GetObjectBySignature(obj.Signature, *configObj)
 	if err != nil {
 		logger.Error().Msgf("could not GetObjectBySignature %s", err)
 		return
@@ -289,17 +319,17 @@ func sendFile(cmd *cobra.Command, args []string) {
 			}
 			head = "v+"
 		}
-		object.Id = objectPb.Id
+		obj.Id = objectPb.Id
 	}
 	//checking whether needed amount of locations is available, if yes, delivering partitionId of first location to copy in
-	partitionId, err := service.GetStorageLocationsStatusForCollectionAlias(object.CollectionId, objectSize, object.Signature, head, *configObj)
+	partitionId, err := service.GetStorageLocationsStatusForCollectionAlias(obj.CollectionId, objectSize, obj.Signature, head, *configObj)
 	if err != nil {
 		logger.Error().Msgf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
 		return
 	}
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
 	if !r.MatchString(partitionId) {
-		logger.Error().Msgf("could not get StoragePartition for collection with alias %s", object.Collection)
+		logger.Error().Msgf("could not get StoragePartition for collection with alias %s", obj.Collection)
 		return
 	}
 
@@ -308,7 +338,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 		logger.Error().Msgf("could not create initial status")
 		return
 	}
-	ObjectJsonRaw, err := json.Marshal(object)
+	ObjectJsonRaw, err := json.Marshal(obj)
 	if err != nil {
 		logger.Error().Msgf(err.Error())
 		return
@@ -342,7 +372,7 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 		// create the tus client.
 		client, err := tus.NewClient(configObj.Url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
-			"ObjectJson": {objectJson}, "Collection": {object.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {getFileName(path, object.Signature, re)}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
+			"ObjectJson": {objectJson}, "Collection": {obj.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {getFileName(path, obj.Signature, re)}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
 		if err != nil {
 			logger.Error().Msgf("could not create client for: " + configObj.Url)
 			return
@@ -360,37 +390,37 @@ func sendFile(cmd *cobra.Command, args []string) {
 			logger.Error().Msgf("could not create upload for file: " + path + ", with err: " + err.Error())
 			return
 		}
-		if object.Id == "" {
+		if obj.Id == "" {
 			objectWithInfo := &pb.ObjectAndFile{}
 			objectPbF := &pb.Object{}
 			//statusId field is used to transfer partition id
 			objectWithInfo.StatusId = partitionId
-			objectWithInfo.FileName = getFileName(filePathCleaned, object.Signature, re)
+			objectWithInfo.FileName = getFileName(filePathCleaned, obj.Signature, re)
 
-			objectPbF.Size = object.Size
-			objectPbF.Signature = object.Signature
-			objectPbF.CollectionId = object.CollectionId
-			objectPbF.Collection = object.Collection
-			objectPbF.Binary = object.Binary
-			objectPbF.Address = object.Address
-			objectPbF.AlternativeTitles = object.AlternativeTitles
-			objectPbF.Checksum = object.Checksum
-			objectPbF.Authors = object.Authors
-			objectPbF.Description = object.Description
-			objectPbF.Keywords = object.Keywords
-			objectPbF.Created = object.Created
-			objectPbF.Expiration = object.Expiration
+			objectPbF.Size = obj.Size
+			objectPbF.Signature = obj.Signature
+			objectPbF.CollectionId = obj.CollectionId
+			objectPbF.Collection = obj.Collection
+			objectPbF.Binary = obj.Binary
+			objectPbF.Address = obj.Address
+			objectPbF.AlternativeTitles = obj.AlternativeTitles
+			objectPbF.Checksum = obj.Checksum
+			objectPbF.Authors = obj.Authors
+			objectPbF.Description = obj.Description
+			objectPbF.Keywords = obj.Keywords
+			objectPbF.Created = obj.Created
+			objectPbF.Expiration = obj.Expiration
 			objectPbF.Head = head
-			objectPbF.Holding = object.Holding
-			objectPbF.Identifiers = object.Identifiers
-			objectPbF.IngestWorkflow = object.IngestWorkflow
-			objectPbF.LastChanged = object.LastChanged
-			objectPbF.References = object.References
-			objectPbF.Sets = object.Sets
-			objectPbF.Title = object.Title
-			objectPbF.User = object.User
+			objectPbF.Holding = obj.Holding
+			objectPbF.Identifiers = obj.Identifiers
+			objectPbF.IngestWorkflow = obj.IngestWorkflow
+			objectPbF.LastChanged = obj.LastChanged
+			objectPbF.References = obj.References
+			objectPbF.Sets = obj.Sets
+			objectPbF.Title = obj.Title
+			objectPbF.User = obj.User
 			objectWithInfo.Object = objectPbF
-			object.Id = "exists"
+			obj.Id = "exists"
 
 			err = service.CreateObjectAndInstance(objectWithInfo, *configObj)
 			if err != nil {
