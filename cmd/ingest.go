@@ -83,8 +83,11 @@ func sendFile(cmd *cobra.Command, args []string) {
 
 	configObj := service.GetConfig(cfgFilePath)
 	ctx := context.Background()
-	out := zerolog.ConsoleWriter{Out: os.Stderr}
+	out := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}
 	zlogger := zerolog.New(out).
+		With().
+		Timestamp().
+		Logger().
 		Level(zerolog.ErrorLevel)
 	var _zlogger zLogger.ZLogger = &zlogger
 	logger := ocfl.NewOCFLLogger(ctx, &zlogger, nil, version.Version1_1, nil)
