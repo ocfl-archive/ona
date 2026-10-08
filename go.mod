@@ -6,7 +6,6 @@ require (
 	emperror.dev/errors v0.8.1
 	github.com/eventials/go-tus v0.0.0-20250612203642-7827b129cd4c
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/je4/filesystem/v3 v3.0.46
 	github.com/je4/utils/v2 v2.0.70
 	github.com/jinzhu/configor v1.2.2
 	github.com/jwalton/go-supportscolor v1.2.0
@@ -27,7 +26,6 @@ require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/atsushinee/go-markdown-generator v0.0.0-20231027094725-92d26ffbe778 // indirect
-	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davidbyttow/govips/v2 v2.18.0 // indirect
 	github.com/dgraph-io/badger/v4 v4.9.1 // indirect
