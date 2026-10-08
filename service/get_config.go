@@ -1,14 +1,15 @@
 package service
 
 import (
-	"github.com/je4/filesystem/v3/pkg/vfsrw"
-	"github.com/je4/utils/v2/pkg/config"
-	"github.com/jinzhu/configor"
-	"github.com/ocfl-archive/ona/configuration"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/je4/utils/v2/pkg/config"
+	"github.com/jinzhu/configor"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
+	"github.com/ocfl-archive/ona/configuration"
 )
 
 func GetConfig(cfgFilePathRaw string) *configuration.Config {

@@ -3,17 +3,18 @@ package cmd
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/je4/filesystem/v3/pkg/vfsrw"
-	"github.com/je4/utils/v2/pkg/zLogger"
-	"github.com/ocfl-archive/ona/service"
-	"github.com/spf13/cobra"
-	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
-	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/je4/utils/v2/pkg/zLogger"
+	"github.com/ocfl-archive/filesystem/pkg/vfsrw"
+	"github.com/ocfl-archive/ona/service"
+	"github.com/spf13/cobra"
+	ublogger "gitlab.switch.ch/ub-unibas/go-ublogger/v2"
+	"go.ub.unibas.ch/cloud/certloader/v2/pkg/loader"
 )
 
 var copyCmd = &cobra.Command{
