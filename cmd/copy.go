@@ -89,7 +89,7 @@ func copyFile(cmd *cobra.Command, args []string) {
 
 	objectInstance, err := service.GetObjectInstancesBySignatureAndLocationsPathName(signature, *configObj)
 	if err != nil {
-		logger.Panic().Msgf("error extracting object instance with signature: %s", signature, err)
+		logger.Panic().Msgf("error extracting object instance with signature: %s: %v", signature, err)
 		return
 	}
 

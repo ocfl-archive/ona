@@ -51,8 +51,8 @@ var generateCmd = &cobra.Command{
 	To fill checksum field in data base you should have a file with checksum in the same folder as the file to be stored
 	and named the same way with addition *.sha512
 	For example:
-	ona ingest -q -p C:\Users\123-345.zip -c C:\Users\config.yml
-	will store 123-345.zip to DLZA without checksum. To add checksum you should add a file that contains checksum in the 
+	ona ingest -q -p C:\Users\123-345.zip -c C:\Users\config.yml -s C:\Users\test.json
+	will store 123-345.zip to DLZA without checksum with upload information in test.json. To add checksum you should add a file that contains checksum in the 
 	same folder with name 123-345.zip.sha512
 	`,
 	// Uncomment the following line if your bare application
@@ -67,9 +67,29 @@ func init() {
 	generateCmd.Flags().BoolP("quiet", "q", false, "The process information should not be showed")
 	generateCmd.Flags().BoolP("background", "b", false, "Do not wait until the order is finished")
 	generateCmd.Flags().BoolP("force", "f", false, "Force to archive and retrieve checksum during the process")
+	generateCmd.Flags().StringP("status", "s", "", "Path to upload information json file")
 }
 
-func sendFile(cmd *cobra.Command, args []string) error {
+func sendFile(cmd *cobra.Command, args []string) (err error) {
+	statusFilePathRaw, _ := cmd.Flags().GetString("status")
+	var statusFilePathCleaned string
+	if statusFilePathRaw != "" {
+		statusFilePathCleaned = filepath.ToSlash(filepath.Clean(statusFilePathRaw))
+	}
+
+	var archivedStatus models.ArchivingStatus
+	var obj models.Object
+	var fileName string
+	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
+
+	defer func() {
+		if statusFilePathCleaned != "" {
+			dateStr := time.Now().Format(time.RFC3339)
+			if writeErr := writeStatusFile(statusFilePathCleaned, archivedStatus, dateStr, obj.Signature, fileName, err); writeErr != nil {
+				fmt.Printf("could not write status to file: %v\n", writeErr)
+			}
+		}
+	}()
 	background, err := cmd.Flags().GetBool("background")
 	if err != nil {
 		fmt.Println(err)
@@ -95,25 +115,26 @@ func sendFile(cmd *cobra.Command, args []string) error {
 
 	quiet, err := cmd.Flags().GetBool("quiet")
 	if err != nil {
-		logger.Error().Msgf(err.Error())
+		logger.Error().Msg(err.Error())
 		return err
 	}
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
-		logger.Error().Msgf(err.Error())
+		logger.Error().Msg(err.Error())
 		return err
 	}
 
 	filePathRaw, _ := cmd.Flags().GetString("path")
 	if filePathRaw == "" {
-		logger.Error().Msgf("You should should specify path")
+		err = errors.New("You should should specify path")
+		logger.Error().Msg(err.Error())
 		return err
 	}
 	filePathCleaned := filepath.ToSlash(filepath.Clean(filePathRaw))
 
 	file, err := os.Open(filePathCleaned)
 	if err != nil {
-		logger.Error().Msgf("could not open file: " + filePathRaw)
+		logger.Error().Msg("could not open file: " + filePathRaw)
 		return err
 	}
 	defer file.Close()
@@ -127,7 +148,7 @@ func sendFile(cmd *cobra.Command, args []string) error {
 
 	jsonPathRow, err := cmd.Flags().GetString("json")
 	if err != nil {
-		logger.Error().Msgf(err.Error())
+		logger.Error().Msg(err.Error())
 		return err
 	}
 	checksum := ""
@@ -139,7 +160,7 @@ func sendFile(cmd *cobra.Command, args []string) error {
 		)
 		_, err = io.Copy(csWriter, file)
 		if err != nil {
-			logger.Error().Msgf(err.Error())
+			logger.Error().Msg(err.Error())
 			return err
 		}
 		if err := csWriter.Close(); err != nil {
@@ -152,11 +173,12 @@ func sendFile(cmd *cobra.Command, args []string) error {
 		}
 		checksum = checksums[checksumType]
 	} else {
-		fileChecksum, err := os.ReadFile(filePathCleaned + "." + checksumType)
-		if err == nil {
+		fileChecksum, readErr := os.ReadFile(filePathCleaned + "." + checksumType)
+		if readErr == nil {
 			checksum = strings.Split(string(fileChecksum), separator)[0]
 		} else {
-			logger.Error().Msgf("You should have a checksum file in the folder or use -f flag to produce the checksum ")
+			err = errors.New("You should have a checksum file in the folder or use -f flag to produce the checksum ")
+			logger.Error().Msg(err.Error())
 			return err
 		}
 	}
@@ -164,32 +186,32 @@ func sendFile(cmd *cobra.Command, args []string) error {
 	objectJson := ""
 	jsonPathCleaned := ""
 	sendTwoFiles := false
-	obj := models.Object{}
+	obj = models.Object{}
 	var objectOcfl inventory.Metadata
 	if jsonPathRow != "" {
 		jsonPathCleaned = filepath.ToSlash(filepath.Clean(jsonPathRow))
 		jsonObject, err := os.ReadFile(jsonPathCleaned)
 		if err != nil {
-			logger.Error().Msgf("could not open json file: " + jsonPathCleaned)
+			logger.Error().Msg("could not open json file: " + jsonPathCleaned)
 			return err
 		}
 		err = json.Unmarshal(jsonObject, &objectOcfl)
 		if err != nil {
-			logger.Error().Msgf(err.Error())
+			logger.Error().Msg(err.Error())
 			return err
 		}
 
 		if objectOcfl.ID != "" {
 			obj, err = service.GetObjectFromGocflObjectT(&objectOcfl)
 			if err != nil {
-				logger.Error().Msgf(err.Error())
+				logger.Error().Msg(err.Error())
 				return err
 			}
 			sendTwoFiles = true
 		} else {
 			err = json.Unmarshal(jsonObject, &obj)
 			if err != nil {
-				logger.Error().Msgf(err.Error())
+				logger.Error().Msg(err.Error())
 				return err
 			}
 		}
@@ -284,11 +306,12 @@ func sendFile(cmd *cobra.Command, args []string) error {
 	}
 	obj.Checksum = checksum
 	obj.Size = objectSize
+	fileName = getFileName(filePathCleaned, obj.Signature, re)
 	var uploads []*os.File
 	if sendTwoFiles && jsonPathCleaned != "" {
 		jsonFile, err := os.Open(jsonPathCleaned)
 		if err != nil {
-			logger.Error().Msgf("could not open file: " + jsonPathCleaned)
+			logger.Error().Msg("could not open file: " + jsonPathCleaned)
 			return err
 		}
 		defer jsonFile.Close()
@@ -318,7 +341,8 @@ func sendFile(cmd *cobra.Command, args []string) error {
 				return err
 			}
 			if len(objects.Objects) != 0 {
-				logger.Error().Msgf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
+				err = errors.Errorf("The file with checksum: %s you are trying to archive already exists in archive\n", checksum)
+				logger.Error().Msg(err.Error())
 				return err
 			}
 			head = "v+"
@@ -333,18 +357,19 @@ func sendFile(cmd *cobra.Command, args []string) error {
 	}
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
 	if !r.MatchString(partitionId) {
-		logger.Error().Msgf("could not get StoragePartition for collection with alias %s", obj.Collection)
+		err = errors.Errorf("could not get StoragePartition for collection with alias %s", obj.Collection)
+		logger.Error().Msg(err.Error())
 		return err
 	}
 
-	archivedStatus, err := service.CreateStatus(models.ArchivingStatus{Status: initialCopying}, *configObj)
+	archivedStatus, err = service.CreateStatus(models.ArchivingStatus{Status: initialCopying}, *configObj)
 	if err != nil {
-		logger.Error().Msgf("could not create initial status")
+		logger.Error().Msg("could not create initial status")
 		return err
 	}
 	ObjectJsonRaw, err := json.Marshal(obj)
 	if err != nil {
-		logger.Error().Msgf(err.Error())
+		logger.Error().Msg(err.Error())
 		return err
 	}
 	objectJson = string(ObjectJsonRaw)
@@ -361,7 +386,6 @@ func sendFile(cmd *cobra.Command, args []string) error {
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
 	httpClient := &http.Client{Transport: customTransport}
-	re := regexp.MustCompile(`[^-_.a-zA-Z0-9]`)
 	for index, tusUpload := range uploads {
 		path := ""
 		severalObjects := ""
@@ -378,20 +402,20 @@ func sendFile(cmd *cobra.Command, args []string) error {
 		client, err := tus.NewClient(configObj.Url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
 			"ObjectJson": {objectJson}, "Collection": {obj.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {getFileName(path, obj.Signature, re)}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
 		if err != nil {
-			logger.Error().Msgf("could not create client for: " + configObj.Url)
+			logger.Error().Msg("could not create client for: " + configObj.Url)
 			return err
 		}
 
 		// create an upload from a file.
 		upload, err := tus.NewUploadFromFile(tusUpload)
 		if err != nil {
-			logger.Error().Msgf("could not upload file: " + path)
+			logger.Error().Msg("could not upload file: " + path)
 			return err
 		}
 		// create the uploader.
 		uploader, err := client.CreateUpload(upload)
 		if err != nil {
-			logger.Error().Msgf("could not create upload for file: " + path + ", with err: " + err.Error())
+			logger.Error().Msg("could not create upload for file: " + path + ", with err: " + err.Error())
 			return err
 		}
 		if obj.Id == "" {
@@ -428,7 +452,7 @@ func sendFile(cmd *cobra.Command, args []string) error {
 
 			err = service.CreateObjectAndInstance(objectWithInfo, *configObj)
 			if err != nil {
-				logger.Error().Msgf(err.Error())
+				logger.Error().Msg(err.Error())
 				return err
 			}
 		}
@@ -471,13 +495,17 @@ func sendFile(cmd *cobra.Command, args []string) error {
 		for {
 			archivedStatusW, err := service.GetStatus(archivedStatus.Id, *configObj)
 			if err != nil {
-				logger.Error().Msgf("could not get initial status with Id: " + archivedStatus.Id)
+				logger.Error().Msg("could not get initial status with Id: " + archivedStatus.Id)
 				return err
 			}
 			if archivedStatusW.Status != archived && archivedStatusW.Status != errorStatus {
 				time.Sleep(10 * time.Second)
 			} else {
 				fmt.Printf("Status of upload: %s", archivedStatusW.Status)
+				archivedStatus = archivedStatusW
+				if archivedStatusW.Status == errorStatus {
+					return errors.New("upload status is error")
+				}
 				break
 			}
 		}
@@ -490,4 +518,49 @@ func getFileName(path string, signature string, re *regexp.Regexp) string {
 	extension := filepath.Ext(path)
 	fileName := re.ReplaceAllString(signature+extension, "_")
 	return fileName
+}
+
+func writeStatusFile(statusFilePath string, archivedStatus models.ArchivingStatus, date, signature, fileName string, procErr error) error {
+	if statusFilePath == "" {
+		return nil
+	}
+	dir := filepath.Dir(statusFilePath)
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+	}
+
+	var data []byte
+	var marshalErr error
+
+	if procErr != nil {
+		output := struct {
+			Id    string `json:"id"`
+			Error string `json:"error"`
+		}{
+			Id:    archivedStatus.Id,
+			Error: procErr.Error(),
+		}
+		data, marshalErr = json.MarshalIndent(output, "", "  ")
+	} else {
+		output := struct {
+			models.ArchivingStatus
+			Date      string `json:"date"`
+			Signature string `json:"signature"`
+			FileName  string `json:"fileName"`
+		}{
+			ArchivingStatus: archivedStatus,
+			Date:            date,
+			Signature:       signature,
+			FileName:        fileName,
+		}
+		data, marshalErr = json.MarshalIndent(output, "", "  ")
+	}
+
+	if marshalErr != nil {
+		return marshalErr
+	}
+
+	return os.WriteFile(statusFilePath, data, 0644)
 }
