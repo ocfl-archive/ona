@@ -415,7 +415,7 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 		// create the uploader.
 		uploader, err := client.CreateUpload(upload)
 		if err != nil {
-			logger.Error().Msg("could not create upload for file: " + path + ", with err: " + err.Error())
+			logger.Error().Msgf("could not create upload for file: %s, with err: %v", path, err)
 			return err
 		}
 		if obj.Id == "" {
