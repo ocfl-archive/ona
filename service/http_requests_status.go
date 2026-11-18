@@ -40,7 +40,7 @@ func GetObjectInstancesBySignatureAndLocationsPathName(signature string, config 
 	}
 	err = json.Unmarshal(body, &objectInstance)
 	if err != nil {
-		return objectInstance, err
+		return objectInstance, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return objectInstance, nil
 }
@@ -56,7 +56,7 @@ func CheckRawObjectInstanceByObjectId(objectId string, config configuration.Conf
 	}
 	err = json.Unmarshal(body, &objectInstance)
 	if err != nil {
-		return objectInstance, err
+		return objectInstance, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return objectInstance, nil
 }
@@ -73,7 +73,7 @@ func GetObjectBySignature(signature string, config configuration.Config) (*pb.Ob
 	}
 	err = json.Unmarshal(body, &object)
 	if err != nil {
-		return object, err
+		return object, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return object, nil
 }
@@ -90,7 +90,7 @@ func GetStorageLocationsStatusForCollectionAlias(alias string, size int64, signa
 	}
 	err = json.Unmarshal(body, &status)
 	if err != nil {
-		return "error", err
+		return "error", errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return status.Id, nil
 }
@@ -107,7 +107,7 @@ func GetQualityForObject(id string, resultingOrNeeded string, config configurati
 	}
 	err = json.Unmarshal(body, &quality)
 	if err != nil {
-		return quality, err
+		return quality, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return quality, nil
 }
@@ -124,7 +124,7 @@ func GetStatus(id string, config configuration.Config) (models.ArchivingStatus, 
 	}
 	err = json.Unmarshal(body, &archivingStatus)
 	if err != nil {
-		return archivingStatus, err
+		return archivingStatus, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return archivingStatus, nil
 }
@@ -141,7 +141,7 @@ func GetObjectInstancesByName(name string, config configuration.Config) (*dlzama
 	}
 	err = json.Unmarshal(body, &objectInstances)
 	if err != nil {
-		return objectInstances, err
+		return objectInstances, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return objectInstances, nil
 }
@@ -158,7 +158,7 @@ func GetObjectsByChecksum(checksum string, config configuration.Config) (*dlzama
 	}
 	err = json.Unmarshal(body, &objects)
 	if err != nil {
-		return objects, err
+		return objects, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return objects, nil
 }
@@ -197,7 +197,7 @@ func CreateStatus(statusObj models.ArchivingStatus, config configuration.Config)
 	}
 	err = json.Unmarshal(body, &archivingStatus)
 	if err != nil {
-		return archivingStatus, err
+		return archivingStatus, errors.Wrapf(err, "could not unmarshal response body '%s'", string(body))
 	}
 	return archivingStatus, nil
 }
@@ -218,19 +218,24 @@ func sendRequest(req *http.Request, config configuration.Config) ([]byte, error)
 	client := &http.Client{Transport: customTransport}
 
 	bearer, err := GetBearer(config)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get bearer token")
+	}
 	req.Header.Add("Authorization", bearer)
 
 	resp, err := client.Do(req)
-	if err == nil {
-		if resp.StatusCode != 200 {
-			return nil, errors.New("Status has status code: " + string(resp.StatusCode))
-		}
-	} else {
-		return nil, err
+	if err != nil {
+		return nil, errors.Wrapf(err, "error executing request to %s", req.URL.String())
 	}
+	defer resp.Body.Close()
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not read response body from %s", req.URL.String())
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("request to %s failed with status code %d, response body: %s", req.URL.String(), resp.StatusCode, string(body))
 	}
 	return body, nil
 }

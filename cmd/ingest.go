@@ -323,7 +323,7 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 
 	objectPb, err := service.GetObjectBySignature(obj.Signature, *configObj)
 	if err != nil {
-		logger.Error().Msgf("could not GetObjectBySignature %s", err)
+		logger.Error().Msgf("could not GetObjectBySignature: %v", err)
 		return err
 	}
 
@@ -331,13 +331,13 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 	if objectPb.Id != "" {
 		objectInstancePb, err := service.CheckRawObjectInstanceByObjectId(objectPb.Id, *configObj)
 		if err != nil {
-			logger.Error().Msgf("could not GetObjectBySignature %s", err)
+			logger.Error().Msgf("could not CheckRawObjectInstanceByObjectId: %v", err)
 			return err
 		}
 		if objectInstancePb.Id == "" {
 			objects, err := service.GetObjectsByChecksum(checksum, *configObj)
 			if err != nil {
-				logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists", checksum)
+				logger.Error().Msgf("could not get objects from database to check whether object with checksum %s exists: %v", checksum, err)
 				return err
 			}
 			if len(objects.Objects) != 0 {
@@ -352,7 +352,7 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 	//checking whether needed amount of locations is available, if yes, delivering partitionId of first location to copy in
 	partitionId, err := service.GetStorageLocationsStatusForCollectionAlias(obj.CollectionId, objectSize, obj.Signature, head, *configObj)
 	if err != nil {
-		logger.Error().Msgf("could not get GetStorageLocationsStatusForCollectionAlias %s", err)
+		logger.Error().Msgf("could not get GetStorageLocationsStatusForCollectionAlias: %v", err)
 		return err
 	}
 	r := regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$")
@@ -364,7 +364,7 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 
 	archivedStatus, err = service.CreateStatus(models.ArchivingStatus{Status: initialCopying}, *configObj)
 	if err != nil {
-		logger.Error().Msg("could not create initial status")
+		logger.Error().Msgf("could not create initial status: %v", err)
 		return err
 	}
 	ObjectJsonRaw, err := json.Marshal(obj)
@@ -402,14 +402,14 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 		client, err := tus.NewClient(configObj.Url, &tus.Config{ChunkSize: configObj.ChunkSize, Header: map[string][]string{"Authorization": {configObj.Key},
 			"ObjectJson": {objectJson}, "Collection": {obj.CollectionId}, "StatusId": {archivedStatus.Id}, "Checksum": {checksum}, "FileName": {getFileName(path, obj.Signature, re)}, "PartitionId": {partitionId}, "SeveralObjects": {severalObjects}}, HttpClient: httpClient})
 		if err != nil {
-			logger.Error().Msg("could not create client for: " + configObj.Url)
+			logger.Error().Msgf("could not create client for: %s: %v", configObj.Url, err)
 			return err
 		}
 
 		// create an upload from a file.
 		upload, err := tus.NewUploadFromFile(tusUpload)
 		if err != nil {
-			logger.Error().Msg("could not upload file: " + path)
+			logger.Error().Msgf("could not upload file: %s: %v", path, err)
 			return err
 		}
 		// create the uploader.
@@ -452,7 +452,7 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 
 			err = service.CreateObjectAndInstance(objectWithInfo, *configObj)
 			if err != nil {
-				logger.Error().Msg(err.Error())
+				logger.Error().Msgf("could not create object and instance: %v", err)
 				return err
 			}
 		}
@@ -495,7 +495,7 @@ func sendFile(cmd *cobra.Command, args []string) (err error) {
 		for {
 			archivedStatusW, err := service.GetStatus(archivedStatus.Id, *configObj)
 			if err != nil {
-				logger.Error().Msg("could not get initial status with Id: " + archivedStatus.Id)
+				logger.Error().Msgf("could not get initial status with Id: %s: %v", archivedStatus.Id, err)
 				return err
 			}
 			if archivedStatusW.Status != archived && archivedStatusW.Status != errorStatus {
